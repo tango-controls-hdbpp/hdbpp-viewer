@@ -36,8 +36,6 @@ import org.tango.jhdb.data.HdbStateArray;
  */
 
 public class MainPanel extends javax.swing.JFrame implements IJLChartListener,HdbProgressListener {
-
-  static final String APP_RELEASE = "1.12";
     
   // Panels
   DockedPanel viewDockedPanel;
@@ -82,6 +80,16 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     Color.yellow,
     Color.black
   };
+  
+  public static String getVersion(){
+    Package p = MainPanel.class.getPackage();
+
+    //if version is set in MANIFEST.mf
+    if(p.getImplementationVersion() != null) return p.getImplementationVersion();
+
+    return "*.*";
+  }
+  
 
   public MainPanel() {
     this(true,true);
@@ -99,7 +107,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       splash = new Splash();
       splash.setMaxProgress(100);
       splash.setMessage("Connection to HDB");
-      splash.setTitle("HDB Viewer (" + APP_RELEASE + ")");
+      splash.setTitle("HDB Viewer (" + getVersion() + ")");
       splash.setVisible(true);
     }
     
@@ -148,7 +156,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       hdbV = "HDB++";
     }
     
-    setTitle(hdb.getDBTypeName() + " " + hdbV + " Viewer [" + APP_RELEASE + "]");
+    setTitle(hdb.getDBTypeName() + " " + hdbV + " Viewer [" + getVersion() + "]");
         
     selection = new ArrayList<AttributeInfo>();
     
