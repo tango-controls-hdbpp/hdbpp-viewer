@@ -1,3 +1,3 @@
-# HDB ++ Java API Extraction Library
+# HDB ++ Viewer
 
 [Link to documentation](http://www.esrf.eu/computing/cs/tango/tango_doc/hdb_viewer/index.html)
