@@ -14,7 +14,7 @@ public class MultiLineTable extends JTable {
     renderer = new MultiLineCellRenderer();
     setDefaultRenderer(String.class, renderer);
     
-    tableModel = new MultiLineTableModel();    
+    tableModel = new MultiLineTableModel();
     this.setModel(tableModel);    
 
   }
@@ -46,13 +46,13 @@ public class MultiLineTable extends JTable {
     updateSize();
   }
   
-  public void saveFile(String fileName) throws IOException {
-    tableModel.saveFile(fileName);
+  public void saveFile(String fileName,int timeFormat,boolean showHeader) throws IOException {
+    tableModel.saveFile(fileName,timeFormat,showHeader);
   }
   
   public String getSelectionAsString() {
     
-    return tableModel.buildTabbedString(getSelectedRows());
+    return tableModel.buildTabbedString(getSelectedRows(),MultiLineTableModel.DATE_TIME_FORMAT,true);
     
   }
   

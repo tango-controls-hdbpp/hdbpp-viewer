@@ -6,7 +6,6 @@
 package HDBViewer;
 
 import fr.esrf.tangoatk.widget.attribute.NumberSpectrumTrend3DViewer;
-import fr.esrf.tangoatk.widget.util.chart.JLAxis;
 import java.awt.Dimension;
 
 /**

@@ -7,11 +7,18 @@ package HDBViewer;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
+import javax.swing.BorderFactory;
+import javax.swing.ButtonGroup;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 
 /**
@@ -24,6 +31,14 @@ public class TablePanel extends javax.swing.JPanel {
   MultiLineTable table;
   JScrollPane tableView;
 
+  ButtonGroup buttonGroup;
+  JRadioButton dateButton;
+  JRadioButton timeButton;
+  JCheckBox showHeaderButton;
+  GridBagConstraints gridBagConstraints;
+  JPanel aPanel;
+  JPanel tPanel;
+ 
   /**
    * Creates new form TablePanel
    */
@@ -37,6 +52,40 @@ public class TablePanel extends javax.swing.JPanel {
     tableView = new JScrollPane(table);
     tablePanel.add(tableView, BorderLayout.CENTER);
     setPreferredSize(new Dimension(800, 600));
+    
+    
+    // Accessory panel
+    buttonGroup = new ButtonGroup();
+    aPanel = new JPanel();
+    tPanel = new JPanel();
+    dateButton = new JRadioButton();
+    timeButton = new JRadioButton();
+
+    tPanel.setBorder(BorderFactory.createTitledBorder("Time Format"));
+    tPanel.setLayout(new GridBagLayout());
+
+    buttonGroup.add(dateButton);
+    dateButton.setSelected(true);
+    dateButton.setText("Date/Time");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    tPanel.add(dateButton, gridBagConstraints);
+
+    buttonGroup.add(timeButton);
+    timeButton.setText("Second since EPOCH");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    tPanel.add(timeButton, gridBagConstraints);
+    
+    
+    showHeaderButton = new JCheckBox("Write header");
+    showHeaderButton.setSelected(true);
+    
+    aPanel.setLayout(new BorderLayout());
+    aPanel.add(showHeaderButton,BorderLayout.NORTH);
+    aPanel.add(tPanel,BorderLayout.SOUTH);    
     
   }
   
@@ -123,10 +172,13 @@ public class TablePanel extends javax.swing.JPanel {
 
   private void saveButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveButtonActionPerformed
 
-    JFileChooser chooser = new JFileChooser(".");
+    JFileChooser chooser = new JFileChooser(".");    
+    chooser.setAccessory(aPanel);
+    
     if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
       try {
-        table.saveFile(chooser.getSelectedFile().getAbsolutePath());
+        int timeFormat = dateButton.isSelected()?MultiLineTableModel.DATE_TIME_FORMAT:MultiLineTableModel.EPOCH_FORMAT;
+        table.saveFile(chooser.getSelectedFile().getAbsolutePath(),timeFormat,showHeaderButton.isSelected());
       } catch(IOException e) {
         Utils.showError(e.getMessage());
       }

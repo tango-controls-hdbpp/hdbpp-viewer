@@ -72,6 +72,9 @@ class RowItem {
 
 public class MultiLineTableModel extends AbstractTableModel {
   
+  public final static int DATE_TIME_FORMAT = 1;
+  public final static int EPOCH_FORMAT = 2;
+  
   private ArrayList<RowItem> data;
   private int[] errorIndex;
   private String[] colNames;
@@ -235,54 +238,70 @@ public class MultiLineTableModel extends AbstractTableModel {
   public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
   }
   
-  private void appendRow(StringBuffer f,int r) {
+  private void appendRow(StringBuffer f,int r,int timeFormat) {
 
     int cCount = getColumnCount();
 
+    if( timeFormat==DATE_TIME_FORMAT ) {
     String[] ds = Utils.formatDateAndTime(data.get(r).time);
-    f.append(ds[0]).append("\t");
-    f.append(ds[1]).append("\t");
+      f.append(ds[0]).append("\t");
+      f.append(ds[1]).append("\t");
+    } else {
+      f.append(Double.toString(data.get(r).time/1e6) + "\t");
+    }
     for(int c=1;c<cCount;c++) {
       String v = (String)getValueAt(r,c);
-      f.append(v).append("\t");
+      f.append(v);
+      if(c<cCount-1)
+       f.append("\t");
     }
     f.append("\n");
 
   }
   
-  public String buildTabbedString(int[] rows) {
+  public String buildTabbedString(int[] rows,int timeFormat,boolean showHeader) {
     
     StringBuffer f = new StringBuffer();
     
     int cCount = getColumnCount();
-    
-    f.append("HDB Date\tHDB Time\t");
-    
-    for(int i=1;i<cCount;i++) {
-      f.append(colNames[i]).append("\t");      
+
+    if(showHeader) {
+      
+      if (timeFormat == DATE_TIME_FORMAT) {
+        f.append("HDB Date\tHDB Time\t");
+      } else {
+        f.append("HDB Time\t");
+      }
+
+      for (int i = 1; i < cCount; i++) {
+        f.append(colNames[i]).append("\t");
+      }
+      f.append("\n");
+      
     }
-    f.append("\n");
     
     if(rows==null) {
       // Whole table
       for(int r=0;r<getRowCount();r++)
-        appendRow(f,r);      
+        appendRow(f,r,timeFormat);      
     } else {
       // Selected rows
       for(int r=0;r<rows.length;r++)
-        appendRow(f,rows[r]);
+        appendRow(f,rows[r],timeFormat);
     }
     
     return f.toString();
     
   }
   
-  public void saveFile(String fileName) throws IOException {
+  public void saveFile(String fileName,int timeFormat,boolean showHeader) throws IOException {
     
     FileWriter f = new FileWriter(fileName);
-    f.write("# File generated from hdbviewer application\n");
-    f.write("#\n");
-    f.write(buildTabbedString(null));       
+    if(showHeader) {
+      f.write("# File generated from hdbviewer application\n");
+      f.write("#\n");
+    }
+    f.write(buildTabbedString(null,timeFormat,showHeader));       
     f.close();
     
   }
