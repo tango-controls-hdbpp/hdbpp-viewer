@@ -11,6 +11,8 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.ArrayList;
@@ -231,7 +233,7 @@ class AttributeNode extends TreeNode {
 
 }
 
-public class TreePanel extends JPanel implements MouseListener,TreeSelectionListener {
+public class TreePanel extends JPanel implements MouseListener,TreeSelectionListener,KeyListener {
 
   TreeNode root;
   DefaultTreeModel treeModel;
@@ -266,6 +268,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     tree.setBorder(BorderFactory.createLoweredBevelBorder());
     tree.addMouseListener(this);
     tree.addTreeSelectionListener(this);
+    tree.addKeyListener(this);
     tree.setToggleClickCount(0);
     treeView = new JScrollPane(tree);
     setLayout(new BorderLayout());
@@ -456,5 +459,20 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
   public void mouseReleased(MouseEvent e) {}
   public void mouseEntered(MouseEvent e) {}
   public void mouseExited(MouseEvent e) {}
+
+  @Override
+  public void keyTyped(KeyEvent e) {
+  }
+
+  @Override
+  public void keyPressed(KeyEvent e) {
+    if(e.getKeyCode()==KeyEvent.VK_ENTER) {
+        fireTreeListener(HdbSigParam.QUERY_DATA);      
+    }
+  }
+
+  @Override
+  public void keyReleased(KeyEvent e) {
+  }
     
 }

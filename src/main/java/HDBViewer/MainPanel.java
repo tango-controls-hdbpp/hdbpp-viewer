@@ -1688,6 +1688,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
   public static void main(String args[]) {
     
     if(args.length==0) {
+
       
       new MainPanel().setVisible(true);
       
