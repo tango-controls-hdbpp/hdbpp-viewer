@@ -12,6 +12,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Date;
+import javax.swing.tree.TreePath;
 import org.tango.jhdb.HdbFailed;
 import org.tango.jhdb.HdbSigInfo;
 
@@ -192,6 +193,22 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
 
   void setHdbMode(int mode) {
     hdbModeCombo.setSelectedIndex(mode);
+  }
+  
+  void refreshTree() {
+
+    treePanel.clearListener();
+    TreePath oldPath = treePanel.getSelectionPath();    
+    rightPanel.remove(treePanel);
+    
+    // Create new tree Panel    
+    treePanel = new TreePanel(parent.hdb.getReader());
+    treePanel.setSelectionPath(oldPath);
+    treePanel.addTreeListener(this);    
+    
+    rightPanel.add(treePanel, BorderLayout.CENTER);        
+    rightPanel.revalidate();
+    
   }
   
   private void moveDate(long step) {

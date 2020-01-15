@@ -1563,9 +1563,11 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     viewMenu = new javax.swing.JMenu();
     errorsMenuItem = new javax.swing.JMenuItem();
     infoMenuItem = new javax.swing.JMenuItem();
+    jSeparator1 = new javax.swing.JPopupMenu.Separator();
     viewDataviewCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
     viewQueryCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
     viewSelectCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+    refreshTreeMenuItem = new javax.swing.JMenuItem();
 
     setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -1606,6 +1608,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       }
     });
     viewMenu.add(infoMenuItem);
+    viewMenu.add(jSeparator1);
 
     viewDataviewCheckBoxMenuItem.setSelected(true);
     viewDataviewCheckBoxMenuItem.setText("Dataviews");
@@ -1633,6 +1636,15 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       }
     });
     viewMenu.add(viewSelectCheckBoxMenuItem);
+
+    refreshTreeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0));
+    refreshTreeMenuItem.setText("Refresh Tree");
+    refreshTreeMenuItem.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        refreshTreeMenuItemActionPerformed(evt);
+      }
+    });
+    viewMenu.add(refreshTreeMenuItem);
 
     jMenuBar1.add(viewMenu);
 
@@ -1681,6 +1693,11 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     ATKGraphicsUtils.centerFrame((JPanel)getContentPane(), infoDialog);
     infoDialog.setVisible(true);    
   }//GEN-LAST:event_infoMenuItemActionPerformed
+
+  private void refreshTreeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshTreeMenuItemActionPerformed
+    // TODO add your handling code here:
+    hdbTreePanel.refreshTree();
+  }//GEN-LAST:event_refreshTreeMenuItemActionPerformed
 
   /**
    * @param args the command line arguments
@@ -1754,6 +1771,8 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
   private javax.swing.JSplitPane hSplitPane;
   private javax.swing.JMenuItem infoMenuItem;
   private javax.swing.JMenuBar jMenuBar1;
+  private javax.swing.JPopupMenu.Separator jSeparator1;
+  private javax.swing.JMenuItem refreshTreeMenuItem;
   private javax.swing.JSplitPane vSplitPane;
   private javax.swing.JCheckBoxMenuItem viewDataviewCheckBoxMenuItem;
   private javax.swing.JMenu viewMenu;

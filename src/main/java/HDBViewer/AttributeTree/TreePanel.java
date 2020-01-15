@@ -398,6 +398,68 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     
   }
   
+  public TreePath getSelectionPath() {
+    
+    return tree.getSelectionPath();
+  
+  }
+  
+  public TreeNode searchNode(TreeNode startNode,String value) {
+
+    int numChild = treeModel.getChildCount(startNode);
+    int i = 0;
+    boolean found = false;
+    TreeNode elem = null;
+
+    while (i < numChild && !found) {
+      elem = (TreeNode) treeModel.getChild(startNode, i);
+      found = elem.toString().compareToIgnoreCase(value) == 0;
+      if (!found) i++;
+    }
+
+    if(found) {
+      return elem;
+    } else {
+      return null;
+    }
+
+  } 
+
+  public void setSelectionPath(TreePath path) {
+    
+    if (path != null) {
+
+      // Reselect old node
+      TreePath newPath = new TreePath(root);
+      TreeNode node = root;
+      boolean found = true;
+      int i = 1;
+      while (found && i < path.getPathCount()) {
+
+        String item = path.getPathComponent(i).toString();
+
+        // Search for item
+        node = searchNode(node,item);
+
+        // Construct the new path
+        if (node!=null) {
+          newPath = newPath.pathByAddingChild(node);
+          i++;
+        } else {
+          found = false;
+        }
+
+      }
+
+      tree.setSelectionPath(newPath);
+      tree.expandPath(newPath);
+      tree.makeVisible(newPath);
+      tree.scrollPathToVisible(newPath);
+
+    }
+    
+  }
+  
   public void addTreeListener(TreeListener l) {
     if(!listeners.contains(l))
       listeners.add(l);
@@ -405,6 +467,10 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
   
   public void removeTreeListener(TreeListener l) {
     listeners.remove(l);
+  }
+  
+  public void clearListener() {
+    listeners.clear();
   }
   
   private void fireTreeListener(int mode) {
