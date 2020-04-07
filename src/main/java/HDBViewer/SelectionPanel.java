@@ -9,12 +9,15 @@ import fr.esrf.Tango.DevFailed;
 import fr.esrf.TangoApi.ApiUtil;
 import fr.esrf.TangoApi.Database;
 import fr.esrf.TangoApi.DbDatum;
+import fr.esrf.tangoatk.widget.util.chart.CfFileReader;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.io.FileReader;
@@ -24,6 +27,7 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
@@ -621,6 +625,26 @@ public class SelectionPanel extends javax.swing.JPanel {
         
         // Update global
         parent.chartPanel.setShowError(cf.showError);
+        if(cf.chartSettings!=null) {
+          CfFileReader cfr = new CfFileReader();
+          cfr.parseText(cf.chartSettings);
+          parent.chartPanel.chart.applyConfiguration(cfr);          
+        }
+        if(cf.xSettings!=null) {
+          CfFileReader cfr = new CfFileReader();
+          cfr.parseText(cf.xSettings);
+          parent.chartPanel.chart.getXAxis().applyConfiguration("x",cfr);                    
+        }
+        if(cf.y1Settings!=null) {
+          CfFileReader cfr = new CfFileReader();
+          cfr.parseText(cf.y1Settings);
+          parent.chartPanel.chart.getY1Axis().applyConfiguration("y1",cfr);                    
+        }
+        if(cf.y2Settings!=null) {
+          CfFileReader cfr = new CfFileReader();
+          cfr.parseText(cf.y2Settings);
+          parent.chartPanel.chart.getY2Axis().applyConfiguration("y2",cfr);                    
+        }
         parent.hdbTreePanel.setTimeInterval(cf.timeInterval);
         parent.hdbTreePanel.hdbModeCombo.setSelectedIndex(cf.hdbMode);
         scriptText.setText(cf.scriptName);        
@@ -659,18 +683,28 @@ public class SelectionPanel extends javax.swing.JPanel {
   }//GEN-LAST:event_loadButtonActionPerformed
 
   private void saveButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveButtonActionPerformed
-    JFileChooser chooser;
+
+    // Acessory panel
+    JCheckBox saveChartSettings;
+    JPanel aPanel = new JPanel();
+    aPanel.setLayout(new GridBagLayout());
+    saveChartSettings = new JCheckBox("Save chart settings");
+    GridBagConstraints gbc = new GridBagConstraints();
+    aPanel.add(saveChartSettings,gbc);
+    
+    JFileChooser chooser;    
     File f = new File(defaultSelFilePath);
     if(f.exists())
      chooser = new JFileChooser(defaultSelFilePath);
     else
-     chooser = new JFileChooser(".");
+     chooser = new JFileChooser(".");    
+    chooser.setAccessory(aPanel);
     String[] exts={"hdb"};
     HDBFileFilter filter = new HDBFileFilter("HDB selection file",exts);
     chooser.addChoosableFileFilter(filter);
     chooser.setFileFilter(filter);
     if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
-      parent.saveConfigFile(chooser.getSelectedFile().getAbsolutePath());
+      parent.saveConfigFile(chooser.getSelectedFile().getAbsolutePath(),saveChartSettings.isSelected());
       defaultSelFilePath = chooser.getSelectedFile().getPath();
     }
   }//GEN-LAST:event_saveButtonActionPerformed

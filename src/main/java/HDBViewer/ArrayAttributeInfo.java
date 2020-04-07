@@ -11,6 +11,8 @@ public class ArrayAttributeInfo {
   public int        wselection; // Selection mode (write value)
   public JLDataView chartData;  // Dataview
   public JLDataView wchartData; // Dataview (Write value)
+  public String     dvSetting;  // Dataview setting
+  public String     wdvSetting;  // Dataview setting
   
   public ArrayAttributeInfo(int idx) {
     this.idx = idx;
@@ -20,6 +22,8 @@ public class ArrayAttributeInfo {
     wselection = AttributeInfo.SEL_NONE;
     chartData = null;
     wchartData = null;
+    dvSetting = null;
+    wdvSetting = null;
   }
 
 }

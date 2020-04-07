@@ -2,6 +2,7 @@ package HDBViewer;
 
 import fr.esrf.tangoatk.widget.util.ATKGraphicsUtils;
 import fr.esrf.tangoatk.widget.util.Splash;
+import fr.esrf.tangoatk.widget.util.chart.CfFileReader;
 import fr.esrf.tangoatk.widget.util.chart.IJLChartListener;
 import fr.esrf.tangoatk.widget.util.chart.JLAxis;
 import fr.esrf.tangoatk.widget.util.chart.JLChartEvent;
@@ -413,6 +414,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     
     int curMode = 0;
     JLDataView dv = null;
+    String dvSetting = null;
 
     if (!ai.isNumeric()) {
       if (selMode != AttributeInfo.SEL_NONE) {
@@ -487,13 +489,15 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       
       if(selectWrite) {
         aai.wselection = selMode;
+        dvSetting = aai.wdvSetting;
       } else {
-        aai.selection = selMode;        
+        aai.selection = selMode; 
+        dvSetting = aai.dvSetting;
       }
       
       if (!selectWrite) {
         curMode = aai.selection;
-        dv = aai.chartData;
+        dv = aai.chartData;        
       } else {
         curMode = aai.wselection;
         dv = aai.wchartData;
@@ -514,8 +518,13 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         }
         
       }
-      
+            
       JLAxis axis;
+      if(dvSetting!=null) {
+        CfFileReader cfr = new CfFileReader();
+        cfr.parseText(dvSetting);
+        dv.applyConfiguration("dv", cfr);
+      }
 
       dv.removeFromAxis();
       //if (aai.errorData != null) {
@@ -675,7 +684,11 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
             
   }
   
-  void saveConfigFile(String fileName) {
+  private String indent(String s,String space) {
+    return space + s.replaceAll("\n", "\n" + space).trim() + "\n";
+  }
+  
+  void saveConfigFile(String fileName,boolean saveChartSettings) {
 
     try {
 
@@ -686,6 +699,20 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       f.write("    showError:"+Boolean.toString(chartPanel.isShowingError())+"\n");
       f.write("    timeInterval:"+hdbTreePanel.getTimeInterval()+"\n");
       f.write("    hdbMode:"+hdbTreePanel.getHdbMode()+"\n");
+      if(saveChartSettings) {
+        f.write("    chart:{\n");
+        f.write(indent(chartPanel.chart.getConfiguration(),"      "));
+        f.write("    }\n");
+        f.write("    xaxis:{\n");
+        f.write(indent(chartPanel.chart.getXAxis().getConfiguration("x"),"      "));
+        f.write("    }\n");
+        f.write("    y1axis:{\n");
+        f.write(indent(chartPanel.chart.getY1Axis().getConfiguration("y1"),"      "));
+        f.write("    }\n");
+        f.write("    y2axis:{\n");
+        f.write(indent(chartPanel.chart.getY1Axis().getConfiguration("y2"),"      "));
+        f.write("    }\n");
+      }
       f.write("  }\n");
       
       for(AttributeInfo ai:selection) {
@@ -696,7 +723,13 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         f.write("    step:"+Boolean.toString(ai.step)+"\n");
         f.write("    table:"+Boolean.toString(ai.table)+"\n");
         f.write("    selection:"+ai.selection+"\n");
+        if(saveChartSettings && ai.chartData != null) {
+          f.write("    dv: {\n"+ai.chartData.getConfiguration("      dv")+"    }\n");          
+        }
         f.write("    wselection:"+ai.wselection+"\n");        
+        if(saveChartSettings && ai.wchartData != null) {
+          f.write("    wdv: {\n"+ai.wchartData.getConfiguration("      dv")+"    }\n");          
+        }
         
         if(ai.isExpanded()) {
           f.write("    expanded: {\n");        
@@ -705,7 +738,13 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
             f.write("      step:"+Boolean.toString(aai.step)+"\n");
             f.write("      table:"+Boolean.toString(aai.table)+"\n");
             f.write("      selection:"+aai.selection+"\n");
+            if(saveChartSettings && aai.chartData != null) {
+              f.write("      dv: {\n"+aai.chartData.getConfiguration("        dv")+"      }\n");          
+            }
             f.write("      wselection:"+aai.wselection+"\n");                    
+            if(saveChartSettings && aai.wchartData != null) {
+              f.write("      wdv: {\n"+aai.wchartData.getConfiguration("        dv")+"      }\n");          
+            }
             f.write("    }\n");
           }          
           f.write("    }\n");       
@@ -970,6 +1009,12 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
           ai.chartData.setUnit(ai.unit);
         }
         
+        if(ai.dvSettings!=null) {
+          CfFileReader cfr = new CfFileReader();
+          cfr.parseText(ai.dvSettings);
+          ai.chartData.applyConfiguration("dv", cfr);
+        }
+        
         ai.chartData.setName(ai.getName());
         
         if(ai.errorData==null) {
@@ -988,6 +1033,11 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
             ai.wchartData = new JLDataView();
             ai.wchartData.setColor(defaultColor[dvIdx%defaultColor.length]);
             ai.wchartData.setUnit(ai.unit);
+          }
+          if(ai.wdvSettings!=null) {
+            CfFileReader cfr = new CfFileReader();
+            cfr.parseText(ai.wdvSettings);
+            ai.wchartData.applyConfiguration("dv", cfr);
           }
           ai.wchartData.setName(ai.getName()+"_w");          
           dvIdx++;

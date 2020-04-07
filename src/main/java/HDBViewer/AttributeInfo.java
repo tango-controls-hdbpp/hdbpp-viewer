@@ -37,6 +37,8 @@ public class AttributeInfo {
   public HdbDataSet arrayData;  // Data for array attribute
   public int maxArraySize;      // maximum size of arrayData
   public int queryMode;         // Query mode (0->DATA 1..10->Config)
+  public String dvSettings;     // String containing dataview settings
+  public String wdvSettings;    // String containing dataview (write) settings
 
   // List of expanded array item (Array item show as scalar)
   public ArrayList<ArrayAttributeInfo> arrAttInfos;
@@ -55,6 +57,8 @@ public class AttributeInfo {
     unit = "";
     queryMode = HdbSigParam.QUERY_DATA;
     A1 = 1.0;
+    dvSettings = null;
+    wdvSettings = null;
   }
   
   public String getName() {

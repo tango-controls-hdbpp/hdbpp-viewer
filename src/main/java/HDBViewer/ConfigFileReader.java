@@ -14,6 +14,10 @@ public class ConfigFileReader {
   boolean showError = false;
   int timeInterval = 0; // Last hour
   int hdbMode=0; // Normal mode
+  String chartSettings = null;
+  String xSettings = null;
+  String y1Settings = null;
+  String y2Settings = null;
 
   /* Lexical coce */
 
@@ -322,6 +326,32 @@ public class ConfigFileReader {
     word=read_word();
     return ret;
   }
+
+  private String parseSettingsSection() throws IOException {
+
+    StringBuffer ret = new StringBuffer();    
+    CHECK_LEX(class_lex(word),OPENBRACE);
+    
+    jump_space();
+    
+    while(CurrentChar != '}') {
+      while (CurrentChar != 0 && CurrentChar != '\n') {
+        ret.append(CurrentChar);
+        read_char();
+      }
+      ret.append("\n");
+      if (CurrentChar == 0) {
+        IOException e = new IOException("String too long at line " + StartLine);
+        throw e;
+      }
+      jump_space();
+    }
+    word=read_word();
+    endBlock();
+    
+    return ret.toString();
+    
+  }
   
   private int parseInt() throws IOException {
     CHECK_LEX(class_lex(word),NUMBER);
@@ -412,9 +442,13 @@ public class ConfigFileReader {
       } else if ( propName.equals("table") ) {
         aai.table = parseBoolean();
       } else if ( propName.equals("selection") ) {
-        aai.selection = parseInt();
+        aai.selection = parseInt();        
+      } else if ( propName.equals("dv") ) {
+        aai.dvSetting = parseSettingsSection();        
       } else if ( propName.equals("wselection") ) {
         aai.wselection = parseInt();
+      } else if ( propName.equals("wdv") ) {
+        aai.wdvSetting = parseSettingsSection();        
       } else {
         System.out.println("Warning, unknown expanded property found:" + propName);
         jumpPropertyValue();
@@ -465,6 +499,14 @@ public class ConfigFileReader {
           timeInterval = parseInt();
         } else if ( propName.equals("hdbMode") ) {
           hdbMode = parseInt();
+        } else if ( propName.equals("chart") ) {         
+          chartSettings = parseSettingsSection();
+        } else if ( propName.equals("xaxis") ) {         
+          xSettings = parseSettingsSection();
+        } else if ( propName.equals("y1axis") ) {         
+          y1Settings = parseSettingsSection();
+        } else if ( propName.equals("y2axis") ) {         
+          y2Settings = parseSettingsSection();
         } else {
           System.out.println("Warning, unknown global property found:" + propName);
           jumpPropertyValue();
@@ -491,8 +533,12 @@ public class ConfigFileReader {
           ai.table = parseBoolean();
         } else if ( propName.equals("selection") ) {
           ai.selection = parseInt();
+        } else if ( propName.equals("dv") ) {          
+          ai.dvSettings = parseSettingsSection();
         } else if ( propName.equals("wselection") ) {
           ai.wselection = parseInt();
+        } else if ( propName.equals("wdv") ) {
+          ai.wdvSettings = parseSettingsSection();
         } else if ( propName.equals("expanded") ) {
           ai.arrAttInfos = parseExpanded();
         } else {
