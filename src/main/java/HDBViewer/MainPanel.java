@@ -710,7 +710,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         f.write(indent(chartPanel.chart.getY1Axis().getConfiguration("y1"),"      "));
         f.write("    }\n");
         f.write("    y2axis:{\n");
-        f.write(indent(chartPanel.chart.getY1Axis().getConfiguration("y2"),"      "));
+        f.write(indent(chartPanel.chart.getY2Axis().getConfiguration("y2"),"      "));
         f.write("    }\n");
       }
       f.write("  }\n");
