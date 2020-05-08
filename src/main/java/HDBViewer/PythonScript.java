@@ -54,10 +54,10 @@ public class PythonScript {
         int _usec = (int) (d.getDataTime() % 1000000);
         vList.add(_sec);
         vList.add(_usec);
-        vList.add(d.getType());
+        vList.add(0);
         try {
-          if (HdbSigInfo.isNumericType(d.getType())) {
-            if (HdbSigInfo.isArrayType(d.getType())) {
+          if (d.info.isNumeric()) {
+            if (d.info.isArray()) {
               vList.add(d.getValueAsDoubleArray());
             } else {
               vList.add(d.getValueAsDouble());
@@ -101,8 +101,7 @@ public class PythonScript {
       PyList attList = (PyList)pyR.get(i);
       String attName = (String)attList.get(0);
       int lgth = ((Integer) attList.get(1)).intValue();
-      ArrayList<HdbData> list = new ArrayList<HdbData>();
-      int _type = 0;
+      ArrayList<HdbData> list = new ArrayList<>();
       
       for(int j=0;j<lgth;j++) {
         
@@ -110,34 +109,39 @@ public class PythonScript {
         
         int _sec = ((Integer) vList.get(0)).intValue();
         int _usec = ((Integer) vList.get(1)).intValue();
-        _type = ((Integer) vList.get(2)).intValue();
         HdbData d;
+        //we might return more results than inputs, but we assume that
+        //all data in a dataset are of the same type
+        if(i < inputs.length)
+        {
+            d = inputs[i].get(0).copy(); // we use the same type as data input
+        }
+        else
+        {
+            d = inputs[0].get(0).copy(); // we use the first input type as default type
+        }
+              
         
-        if(HdbSigInfo.isNumericType(_type)) {
-          
-          if(HdbSigInfo.isArrayType(_type)) {
-            
-            d = new HdbDoubleArray(HdbSigInfo.TYPE_ARRAY_DOUBLE_RO);                        
+        
+          if (d.info.isNumeric()) {
+            if (d.info.isArray()) {
+                                
             PyList arrList = ((PyList)vList.get(3));
-            ArrayList<Object> v = new ArrayList<Object>();
+            ArrayList<Object> v = new ArrayList<>();
             for(int k=0;k<arrList.size();j++) {
               v.add((Double)arrList.get(k));
             }
             d.parseValue(v);
             
           } else {
-            
-            d = new HdbDouble(HdbSigInfo.TYPE_SCALAR_DOUBLE_RO);                        
-            ArrayList<Object> v = new ArrayList<Object>();
+            ArrayList<Object> v = new ArrayList<>();
             v.add((Double)vList.get(3));
             d.parseValue(v);
                         
           }
           
         } else {
-          
-          d = new HdbString(HdbSigInfo.TYPE_SCALAR_STRING_RO);                        
-          ArrayList<Object> v = new ArrayList<Object>();
+          ArrayList<Object> v = new ArrayList<>();
           v.add((String)vList.get(3));
           d.parseValue(v);
           
@@ -150,9 +154,6 @@ public class PythonScript {
       }
       
       result[i] = new HdbDataSet(list);
-      result[i].setName(attName);
-      result[i].setType(_type);
-      
     }
     
 

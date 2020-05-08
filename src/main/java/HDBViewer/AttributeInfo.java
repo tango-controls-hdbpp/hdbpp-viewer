@@ -20,7 +20,7 @@ public class AttributeInfo {
 
   public String  host;          // Tango HOST
   public String  name;          // 4 fields attribute name
-  public String  type;          // HdbType of the signal
+  private String  type = "";          // HdbType of the signal
   public String  unit;          // Unit
   public double  A1;            // Conversion factor
   public HdbSigInfo sigInfo;    // Signal info struct
@@ -98,6 +98,15 @@ public class AttributeInfo {
     return this.arrAttInfos.size()>0;
   }  
   
+  public String getType()
+  {
+      if(type.isEmpty())
+      {
+          type = (sigInfo.isArray()? "array_" : "scalar_") + sigInfo.dataType.toString().toLowerCase() + "_" + sigInfo.access.toString().toLowerCase();
+      }
+      return type;
+  }
+
   /**
    * Expand array attribute items
    * @param ids List of index to be expanded

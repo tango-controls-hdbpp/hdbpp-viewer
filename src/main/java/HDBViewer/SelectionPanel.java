@@ -488,7 +488,7 @@ public class SelectionPanel extends javax.swing.JPanel {
       
       objs[j][0] = ai.host;
       objs[j][1] = ai.getName();
-      objs[j][2] = ai.type;
+      objs[j][2] = ai.getType();
       objs[j][3] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
       objs[j][4] = ai.table;        
       objs[j][5] = ai.step;        
@@ -520,7 +520,7 @@ public class SelectionPanel extends javax.swing.JPanel {
         
         objs[j][0] = ai.host;
         objs[j][1] = ai.getName()+"_w";
-        objs[j][2] = ai.type;
+        objs[j][2] = ai.getType();
         objs[j][3] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
         objs[j][4] = ai.table;        
         objs[j][5] = ai.step;        
@@ -614,7 +614,6 @@ public class SelectionPanel extends javax.swing.JPanel {
         // Update type info
         for(int i=0;i<list.size();i++) {
           HdbSigInfo si = parent.hdb.getReader().getSigInfo(list.get(i).getFullName());
-          list.get(i).type = HdbSigInfo.typeStr[si.type].substring(5).toLowerCase();
           list.get(i).sigInfo = si;
         }
         

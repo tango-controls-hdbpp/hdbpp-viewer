@@ -256,7 +256,6 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     ai.host = host;
     ai.name = name;
     HdbSigInfo si = hdb.getReader().getSigInfo(ai.getFullName());
-    ai.type = HdbSigInfo.typeStr[si.type].substring(5).toLowerCase();
     ai.sigInfo = si;
 
     AttributeInfo eai = AttributeInfo.getFromList(ai, selection);
@@ -891,13 +890,18 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
               ai.host = "pyscript";
               ai.name = pyResults[i].getName();
               ai.table = true;
-              int type = pyResults[i].getType();
-              if(type<=0 || type>HdbSigInfo.TYPE_ARRAY_ULONG64_RW) {
-                throw new HdbFailed("Wrong type code " + type);
-              }              
-              ai.type = HdbSigInfo.typeStr[type].substring(5).toLowerCase();
               HdbSigInfo dummySi = new HdbSigInfo();
               dummySi.name = ai.name;
+              int resultIdx = 0;
+              if(i < results.length)
+              {
+                  resultIdx = i;
+              }
+              HdbSigInfo inputInfo = results[resultIdx].get(0).info;
+              // Assume same type as the input.
+              dummySi.type = inputInfo.type;
+              dummySi.format = inputInfo.format;
+              dummySi.access = inputInfo.access;
               dummySi.type = type;
               dummySi.sigId = ai.host + ":" + ai.name;
               ai.sigInfo = dummySi;
