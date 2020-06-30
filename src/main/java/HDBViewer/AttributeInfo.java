@@ -2,8 +2,8 @@ package HDBViewer;
 
 import fr.esrf.tangoatk.widget.util.chart.JLDataView;
 import java.util.ArrayList;
-import org.tango.jhdb.HdbSigInfo;
 import org.tango.jhdb.HdbSigParam;
+import org.tango.jhdb.SignalInfo;
 import org.tango.jhdb.data.HdbData;
 import org.tango.jhdb.data.HdbDataSet;
 
@@ -23,7 +23,7 @@ public class AttributeInfo {
   private String  type = "";          // HdbType of the signal
   public String  unit;          // Unit
   public double  A1;            // Conversion factor
-  public HdbSigInfo sigInfo;    // Signal info struct
+  public SignalInfo sigInfo;    // Signal info struct
   public boolean step;          // Step mode
   public boolean table;         // Display in HDB table
   public int     selection;     // Selection mode

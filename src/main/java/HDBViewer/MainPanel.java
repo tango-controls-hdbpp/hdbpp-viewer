@@ -22,6 +22,7 @@ import org.tango.jhdb.HdbProgressListener;
 import org.tango.jhdb.HdbReader;
 import org.tango.jhdb.HdbSigInfo;
 import org.tango.jhdb.HdbSigParam;
+import org.tango.jhdb.SignalInfo;
 import org.tango.jhdb.data.HdbData;
 import org.tango.jhdb.data.HdbDataSet;
 import org.tango.jhdb.data.HdbFloatArray;
@@ -819,7 +820,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         } catch(Exception e) {}
       
         // Array of sigIds
-        HdbSigInfo[] sigIn = new HdbSigInfo[selection.size()];
+        SignalInfo[] sigIn = new SignalInfo[selection.size()];
         for (int i = 0; i < sigIn.length; i++) {
           sigIn[i] = selection.get(i).sigInfo;
         }
@@ -890,19 +891,18 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
               ai.host = "pyscript";
               ai.name = pyResults[i].getName();
               ai.table = true;
-              HdbSigInfo dummySi = new HdbSigInfo();
+              SignalInfo dummySi = new SignalInfo();
               dummySi.name = ai.name;
               int resultIdx = 0;
               if(i < results.length)
               {
                   resultIdx = i;
               }
-              HdbSigInfo inputInfo = results[resultIdx].get(0).info;
+              SignalInfo inputInfo = results[resultIdx].get(0).info;
               // Assume same type as the input.
-              dummySi.type = inputInfo.type;
+              dummySi.dataType = inputInfo.dataType;
               dummySi.format = inputInfo.format;
               dummySi.access = inputInfo.access;
-              dummySi.type = type;
               dummySi.sigId = ai.host + ":" + ai.name;
               ai.sigInfo = dummySi;
               
