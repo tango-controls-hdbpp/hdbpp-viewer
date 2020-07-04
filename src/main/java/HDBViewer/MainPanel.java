@@ -829,7 +829,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
           // Get Data from HDB
           startR = System.currentTimeMillis();
-          results = hdb.getReader().getData(sigIn, startDate, stopDate, hdbTreePanel.getHdbMode());
+          results = hdb.getReader().getData(sigIn, startDate, stopDate, hdbTreePanel.getHdbMode().ordinal());
           stopR = System.currentTimeMillis();
           infoDialog.addText("Request time=" + (stopR-startR) + " ms");
 
