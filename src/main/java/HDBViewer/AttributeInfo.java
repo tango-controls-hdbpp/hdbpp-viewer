@@ -2,6 +2,10 @@ package HDBViewer;
 
 import fr.esrf.tangoatk.widget.util.chart.JLDataView;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import org.tango.jhdb.HdbSigParam;
 import org.tango.jhdb.SignalInfo;
 import org.tango.jhdb.data.HdbData;
@@ -40,6 +44,9 @@ public class AttributeInfo {
   public String dvSettings;     // String containing dataview settings
   public String wdvSettings;    // String containing dataview (write) settings
 
+
+  private Map<SignalInfo.Interval, Set<HdbData.Aggregate>> extractDataInfo = new EnumMap<>(SignalInfo.Interval.class);
+
   // List of expanded array item (Array item show as scalar)
   public ArrayList<ArrayAttributeInfo> arrAttInfos;
 
@@ -59,6 +66,7 @@ public class AttributeInfo {
     A1 = 1.0;
     dvSettings = null;
     wdvSettings = null;
+    extractDataInfo.put(SignalInfo.Interval.NONE, new HashSet<HdbData.Aggregate>());
   }
 
   public String getName() {
@@ -149,6 +157,61 @@ public class AttributeInfo {
     else
       return list.get(i);
 
+  }
+
+  void toggleAggregate(SignalInfo.Interval interval, HdbData.Aggregate agg) {
+    if(extractDataInfo.containsKey(interval))
+    {
+      //For none (raw data) the set of aggregate is empty so we don't
+      //even check, but one other extract is needed.
+      if(interval == SignalInfo.Interval.NONE)
+      {
+        if(extractDataInfo.size()>1)
+        {
+          extractDataInfo.remove(interval);
+        }
+      }
+      else
+      {
+        Set<HdbData.Aggregate> aggs = extractDataInfo.get(interval);
+        if(aggs.contains(agg))
+        {
+          //last aggregate, remove the interval alltogether, unless it is the last one.
+          if(aggs.size() == 1)
+          {
+            if(extractDataInfo.size()>1)
+            {
+              extractDataInfo.remove(interval);
+            }
+          }
+          else
+          {
+            aggs.remove(agg);
+          }
+        }
+        else
+        {
+          aggs.add(agg);
+        }
+      }
+    }
+    else
+    {
+      HashSet<HdbData.Aggregate> aggs = new HashSet<HdbData.Aggregate>();
+      if(interval != SignalInfo.Interval.NONE)
+      {
+        aggs.add(agg);
+      }
+      extractDataInfo.put(interval, aggs);
+    }
+  }
+
+  Set<HdbData.Aggregate> getAggregates(SignalInfo.Interval interval) {
+    return extractDataInfo.getOrDefault(interval, new HashSet<HdbData.Aggregate>());
+  }
+
+  Set<SignalInfo.Interval> getIntervals() {
+    return extractDataInfo.keySet();
   }
 
 }

@@ -820,28 +820,38 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         } catch(Exception e) {}
 
         // Array of sigIds
-        SignalInfo[] sigIn = new SignalInfo[selection.size()];
-        for (int i = 0; i < sigIn.length; i++) {
-          sigIn[i] = selection.get(i).sigInfo;
+        ArrayList<HdbReader.SignalInput> sigIn = new ArrayList<>(selection.size());
+        for (AttributeInfo att : selection)
+        {
+          for(SignalInfo.Interval itl : att.getIntervals())
+          {
+            HdbReader.SignalInput input = new HdbReader.SignalInput();
+            input.info = att.sigInfo;
+            input.startDate = startDate;
+            input.endDate = stopDate;
+            input.info.interval = itl; //this will only be used for aggregate.
+            input.info.aggregates = att.getAggregates(itl);
+            sigIn.add(input);
+          }
         }
 
         try {
 
           // Get Data from HDB
           startR = System.currentTimeMillis();
-          results = hdb.getReader().getData(sigIn, startDate, stopDate, hdbTreePanel.getHdbMode().ordinal());
+          results = hdb.getReader().getData(sigIn, hdbTreePanel.getHdbMode());
           stopR = System.currentTimeMillis();
           infoDialog.addText("Request time=" + (stopR-startR) + " ms");
 
           // retreive unit
-          for(int i=0;i<sigIn.length;i++) {
+          for(int i=0;i<sigIn.size();i++) {
             try {
 
-              switch(sigIn[i].queryConfig) {
+              switch(sigIn.get(i).info.queryConfig) {
 
                 case HdbSigParam.QUERY_DATA:
-                  if(sigIn[i].isNumeric()) {
-                    HdbSigParam p = hdb.getReader().getLastParam(sigIn[i]);
+                  if(sigIn.get(i).info.isNumeric()) {
+                    HdbSigParam p = hdb.getReader().getLastParam(sigIn.get(i).info);
                     selection.get(i).unit = p.unit;
                     selection.get(i).A1 = p.display_unit;
                   }
@@ -863,7 +873,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
           }
 
           // Apply conversion factor
-          for(int i=0;i<sigIn.length;i++) {
+          for(int i=0;i<sigIn.size();i++) {
             double A1 = selection.get(i).A1;
             if(A1!=1.0)
               results[i].applyConversionFactor(A1);
@@ -878,8 +888,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
             HdbDataSet[] pyResults = s.run(results);
 
             HdbDataSet[] newResults = new HdbDataSet[results.length + pyResults.length];
-            for(int i=0;i<results.length;i++)
-              newResults[i] = results[i];
+            System.arraycopy(results, 0, newResults, 0, results.length);
 
 
             for(int i=0;i<pyResults.length;i++) {
@@ -903,6 +912,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
               dummySi.dataType = inputInfo.dataType;
               dummySi.format = inputInfo.format;
               dummySi.access = inputInfo.access;
+              dummySi.interval = inputInfo.interval;
               dummySi.sigId = ai.host + ":" + ai.name;
               ai.sigInfo = dummySi;
 
