@@ -1,9 +1,11 @@
 package HDBViewer;
 
-
-import java.io.*;
-import java.util.*;
-import java.awt.*;
+import java.awt.Color;
+import java.io.ByteArrayInputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 
 /** A class for loading selection file */
 
@@ -409,7 +411,7 @@ public class ConfigFileReader {
 
   private String parseStringArray() throws IOException {
 
-    Vector v = new Vector();
+    ArrayList<String> v = new ArrayList<>();
     boolean end = false;
 
     while (!end && word!=null) {
@@ -424,7 +426,7 @@ public class ConfigFileReader {
 
     // Build String
     String ret = "";
-    for(int i=0;i<v.size();i++) ret += (String)v.get(i) + "\n";
+    for(int i=0;i<v.size();i++) ret += v.get(i) + "\n";
     return ret;
 
   }
@@ -562,7 +564,7 @@ public class ConfigFileReader {
 
   private String parseParamString() throws IOException {
 
-    Vector v = new Vector();
+    ArrayList<String> v = new ArrayList<>();
     boolean end = false;
     int lex;
 
@@ -588,7 +590,7 @@ public class ConfigFileReader {
     // Build String
     String ret = "";
     for(int i=0;i<v.size();i++) {
-      ret += (String)v.get(i);
+      ret += v.get(i);
       if(i<v.size()-1) ret += "\n";
     }
     return ret;

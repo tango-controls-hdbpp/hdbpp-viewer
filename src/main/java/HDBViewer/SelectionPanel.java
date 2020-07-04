@@ -247,81 +247,77 @@ public class SelectionPanel extends javax.swing.JPanel {
               }
             }
           }
-          
         }
-        
+
         updateSelectionList();
-        
+
       }
 
     };
-    
+
     selTable = new JTable(selModel);
     selTable.setDefaultRenderer(Boolean.class, new BooleanCellRenderer());
     JScrollPane selView = new JScrollPane(selTable);
     selView.setPreferredSize(new Dimension(600,100));
     listPanel.add(selView, BorderLayout.CENTER);
-        
+
     updateSelectionList();
-    
+
     // Got default path from database
     try {
-      
+
       Database db = ApiUtil.get_db_obj();
-      
+
       DbDatum ds = db.get_property("HDBViewer","scriptPath");
       if(!ds.is_empty()) defaultScriptPath = ds.extractString();
 
       DbDatum df = db.get_property("HDBViewer","selFilePath");
       if(!df.is_empty()) defaultSelFilePath = df.extractString();
-      
+
     } catch(DevFailed e) {
-      
+
     }
-    
-        
+
   }
-  
-  
+
   boolean isEditable(int row,int column) {
-    
     if(column<4)
       return false;
 
     int attIdx = rowToIdx[row].attIdx;
     int item = rowToIdx[row].arrayItem;
     AttributeInfo ai = parent.selection.get(attIdx);
-    
+
     if(column==4) {
       // Table
       return true;
     }
-    
+
     if(column==5) {
       // Step
       return (item>=0) ||
              (ai.isNumeric() && !ai.isArray());
     }
-    
+
     if(column==6 || column==7) {
       // Y1, Y2
       return ai.isNumeric();
     }
-    
+
     if(column==8) {
       // Image
       return item==-1 && ai.isNumeric() && ai.isArray();
     }
-    
+
     return false;
-    
+
   }
-    
-  String getPyScript() {    
+
+  String getPyScript() {
     return scriptText.getText();
   }
 
-  void setPyScript(String name) {    
+  void setPyScript(String name) {
     scriptText.setText(name);
   }
 
@@ -451,14 +447,14 @@ public class SelectionPanel extends javax.swing.JPanel {
 
     add(btnPanel, java.awt.BorderLayout.SOUTH);
   }// </editor-fold>//GEN-END:initComponents
- 
+
   void updateSelectionList() {
-    
+
     int nbAtt = 0;
     for (int i = 0; i < parent.selection.size(); i++) {
 
       AttributeInfo ai = parent.selection.get(i);
-      
+
       if(ai.isExpanded()) {
 
         // Expanded array attribute
@@ -466,16 +462,16 @@ public class SelectionPanel extends javax.swing.JPanel {
           nbAtt += 2*(1+ai.arrAttInfos.size());
         else
           nbAtt += 1+ai.arrAttInfos.size();
-        
+
       } else {
-        
+
         if(ai.isRW())
           nbAtt+=2;
         else
-          nbAtt+=1;      
-        
+          nbAtt+=1;
+
       }
-      
+
     }
 
     int j=0;
@@ -483,21 +479,21 @@ public class SelectionPanel extends javax.swing.JPanel {
     rowToIdx = new SelRowItem[nbAtt];
 
     for (int i = 0; i < parent.selection.size(); i++) {
-      
+
       AttributeInfo ai = parent.selection.get(i);
-      
+
       objs[j][0] = ai.host;
       objs[j][1] = ai.getName();
       objs[j][2] = ai.getType();
       objs[j][3] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
-      objs[j][4] = ai.table;        
-      objs[j][5] = ai.step;        
+      objs[j][4] = ai.table;
+      objs[j][5] = ai.step;
       objs[j][6] = (ai.selection == AttributeInfo.SEL_Y1);
       objs[j][7] = (ai.selection == AttributeInfo.SEL_Y2);
       objs[j][8] = (ai.selection == AttributeInfo.SEL_IMAGE);
       rowToIdx[j] = new SelRowItem(i,false,-1);
       j++;
-      
+
       if (ai.isExpanded()) {
         int k = 0;
         for (ArrayAttributeInfo aai : ai.arrAttInfos) {
@@ -515,21 +511,21 @@ public class SelectionPanel extends javax.swing.JPanel {
           k++;
         }
       }
-        
+
       if(ai.isRW()) {
-        
+
         objs[j][0] = ai.host;
         objs[j][1] = ai.getName()+"_w";
         objs[j][2] = ai.getType();
         objs[j][3] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
-        objs[j][4] = ai.table;        
-        objs[j][5] = ai.step;        
+        objs[j][4] = ai.table;
+        objs[j][5] = ai.step;
         objs[j][6] = (ai.wselection == AttributeInfo.SEL_Y1);
         objs[j][7] = (ai.wselection == AttributeInfo.SEL_Y2);
         objs[j][8] = (ai.wselection == AttributeInfo.SEL_IMAGE);
         rowToIdx[j] = new SelRowItem(i,true,-1);
         j++;
-        
+
         if (ai.isExpanded()) {
           int k = 0;
           for (ArrayAttributeInfo aai : ai.arrAttInfos) {
@@ -547,9 +543,9 @@ public class SelectionPanel extends javax.swing.JPanel {
             k++;
           }
         }
-        
+
       }
-      
+
     }
 
     selModel.setDataVector(objs, colNames);
@@ -560,20 +556,20 @@ public class SelectionPanel extends javax.swing.JPanel {
     selTable.getColumnModel().getColumn(6).setMaxWidth(60);
     selTable.getColumnModel().getColumn(7).setMaxWidth(60);
     selTable.getColumnModel().getColumn(8).setMaxWidth(60);
-      
+
   }
-  
+
   private void removeID(String id) {
-    
+
     boolean found = false;
     int i=0;
     while(!found && i<parent.selection.size()) {
       found = parent.selection.get(i).sigInfo.sigId == id;
       if(!found) i++;
     }
-    
+
     if(found) {
-      AttributeInfo ai = parent.selection.get(i);      
+      AttributeInfo ai = parent.selection.get(i);
       parent.unselectAttribute(ai,-1);
       if(ai.isExpanded()) {
         for(int j=0;j<ai.arrAttInfos.size();j++)
@@ -581,84 +577,84 @@ public class SelectionPanel extends javax.swing.JPanel {
       }
       parent.selection.remove(i);
     }
-    
+
   }
 
   private void removeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeButtonActionPerformed
 
     int[] rows = selTable.getSelectedRows();
-    ArrayList<String> ids = new ArrayList<String>();
-    
+    ArrayList<String> ids = new ArrayList<>();
+
     // List of ids to remove
     for(int i=0;i<rows.length;i++) {
       int attIdx = rowToIdx[rows[i]].attIdx;
       String id = parent.selection.get(attIdx).sigInfo.sigId;
       if(!ids.contains(id)) ids.add(id);
     }
-    
+
     for(int i=0;i<ids.size();i++)
       removeID(ids.get(i));
-    
+
     updateSelectionList();
-    
+
   }//GEN-LAST:event_removeButtonActionPerformed
 
   void loadFile(String fileName) {
-    
+
        try {
 
         // Load the config file
         ConfigFileReader cf = new ConfigFileReader(new FileReader(fileName));
         ArrayList<AttributeInfo> list = cf.parseFile();
-        
+
         // Update type info
         for(int i=0;i<list.size();i++) {
           HdbSigInfo si = parent.hdb.getReader().getSigInfo(list.get(i).getFullName());
           list.get(i).sigInfo = si;
         }
-        
+
         // Update list
         parent.reset();
         parent.selection = list;
-        updateSelectionList();        
-        
+        updateSelectionList();
+
         // Update global
         parent.chartPanel.setShowError(cf.showError);
         if(cf.chartSettings!=null) {
           CfFileReader cfr = new CfFileReader();
           cfr.parseText(cf.chartSettings);
-          parent.chartPanel.chart.applyConfiguration(cfr);          
+          parent.chartPanel.chart.applyConfiguration(cfr);
         }
         if(cf.xSettings!=null) {
           CfFileReader cfr = new CfFileReader();
           cfr.parseText(cf.xSettings);
-          parent.chartPanel.chart.getXAxis().applyConfiguration("x",cfr);                    
+          parent.chartPanel.chart.getXAxis().applyConfiguration("x",cfr);
         }
         if(cf.y1Settings!=null) {
           CfFileReader cfr = new CfFileReader();
           cfr.parseText(cf.y1Settings);
-          parent.chartPanel.chart.getY1Axis().applyConfiguration("y1",cfr);                    
+          parent.chartPanel.chart.getY1Axis().applyConfiguration("y1",cfr);
         }
         if(cf.y2Settings!=null) {
           CfFileReader cfr = new CfFileReader();
           cfr.parseText(cf.y2Settings);
-          parent.chartPanel.chart.getY2Axis().applyConfiguration("y2",cfr);                    
+          parent.chartPanel.chart.getY2Axis().applyConfiguration("y2",cfr);
         }
         parent.hdbTreePanel.setTimeInterval(cf.timeInterval);
         parent.hdbTreePanel.hdbModeCombo.setSelectedIndex(cf.hdbMode);
-        scriptText.setText(cf.scriptName);        
-        
+        scriptText.setText(cf.scriptName);
+
       } catch(IOException e) {
         Utils.showError("Cannot load file\n"+e.getMessage());
       } catch(HdbFailed e2) {
-        Utils.showError("Cannot load file\n"+e2.getMessage());      
+        Utils.showError("Cannot load file\n"+e2.getMessage());
       }
-   
+
   }
-  
+
   private void removeAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAllButtonActionPerformed
     parent.selection.clear();
-    updateSelectionList();    
+    updateSelectionList();
   }//GEN-LAST:event_removeAllButtonActionPerformed
 
   private void loadButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadButtonActionPerformed
@@ -678,7 +674,7 @@ public class SelectionPanel extends javax.swing.JPanel {
       defaultSelFilePath = chooser.getSelectedFile().getPath();
     }
 
-    
+
   }//GEN-LAST:event_loadButtonActionPerformed
 
   private void saveButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveButtonActionPerformed
@@ -690,13 +686,13 @@ public class SelectionPanel extends javax.swing.JPanel {
     saveChartSettings = new JCheckBox("Save chart settings");
     GridBagConstraints gbc = new GridBagConstraints();
     aPanel.add(saveChartSettings,gbc);
-    
-    JFileChooser chooser;    
+
+    JFileChooser chooser;
     File f = new File(defaultSelFilePath);
     if(f.exists())
      chooser = new JFileChooser(defaultSelFilePath);
     else
-     chooser = new JFileChooser(".");    
+     chooser = new JFileChooser(".");
     chooser.setAccessory(aPanel);
     String[] exts={"hdb"};
     HDBFileFilter filter = new HDBFileFilter("HDB selection file",exts);

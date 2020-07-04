@@ -12,7 +12,7 @@ import org.tango.jhdb.data.HdbDataSet;
  * @author pons
  */
 public class AttributeInfo {
-  
+
   public static final int SEL_NONE = 0;
   public static final int SEL_Y1 = 1;
   public static final int SEL_Y2 = 2;
@@ -43,7 +43,7 @@ public class AttributeInfo {
   // List of expanded array item (Array item show as scalar)
   public ArrayList<ArrayAttributeInfo> arrAttInfos;
 
-  
+
   public AttributeInfo() {
     step = false;
     table = false;
@@ -60,22 +60,22 @@ public class AttributeInfo {
     dvSettings = null;
     wdvSettings = null;
   }
-  
+
   public String getName() {
     if( sigInfo!=null ) {
       return name + HdbSigParam.FIELDS[sigInfo.queryConfig];
     } else
       return name;
   }
-  
+
   public String getFullName() {
     return "tango://" + host + "/" + name;
   }
-  
+
   public boolean isRW() {
     return sigInfo.isRW();
   }
-  
+
   public boolean isArray() {
     return sigInfo.isArray();
   }
@@ -91,13 +91,13 @@ public class AttributeInfo {
   public boolean isState() {
     return sigInfo.isState();
   }
-  
+
   public boolean isExpanded() {
     if( !isArray() || arrAttInfos==null )
       return false;
     return this.arrAttInfos.size()>0;
-  }  
-  
+  }
+
   public String getType()
   {
       if(type.isEmpty())
@@ -112,31 +112,31 @@ public class AttributeInfo {
    * @param ids List of index to be expanded
    */
   public void expand(ArrayList<Integer> ids) {
-    
+
     arrAttInfos = new ArrayList<ArrayAttributeInfo>();
     for (int i = 0; i < ids.size(); i++) {
       ArrayAttributeInfo aai = new ArrayAttributeInfo(ids.get(i));
       arrAttInfos.add(aai);
     }
-        
+
   }
-  
+
   static boolean isInList(AttributeInfo item,ArrayList<AttributeInfo> list) {
-    
+
     boolean found = false;
     int i = 0;
     while(!found && i<list.size()) {
-      found = item.sigInfo.sigId.equals(list.get(i).sigInfo.sigId) && 
+      found = item.sigInfo.sigId.equals(list.get(i).sigInfo.sigId) &&
               (item.sigInfo.queryConfig == list.get(i).sigInfo.queryConfig);
       if(!found) i++;
     }
-    
+
     return found;
-    
+
   }
-  
+
   static AttributeInfo getFromList(AttributeInfo item,ArrayList<AttributeInfo> list) {
-    
+
     boolean found = false;
     int i = 0;
     while(!found && i<list.size()) {
@@ -148,7 +148,7 @@ public class AttributeInfo {
       return null;
     else
       return list.get(i);
-    
+
   }
-  
+
 }

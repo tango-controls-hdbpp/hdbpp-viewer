@@ -23,7 +23,7 @@ import org.tango.jhdb.HdbSigInfo;
 public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,TreeListener {
 
   MainPanel parent;
-  
+
   com.toedter.calendar.JSpinnerDateEditor s0;
   com.toedter.calendar.JSpinnerDateEditor s1;
   TreePanel treePanel;
@@ -34,13 +34,13 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
   HDBTreePanel(MainPanel parent) {
 
     this.parent = parent;
-    
+
     s0 = new com.toedter.calendar.JSpinnerDateEditor();
     ((javax.swing.JSpinner.DefaultEditor) s0.getEditor()).getTextField().setHorizontalAlignment(javax.swing.JTextField.LEFT);
 
     s1 = new com.toedter.calendar.JSpinnerDateEditor();
     ((javax.swing.JSpinner.DefaultEditor) s1.getEditor()).getTextField().setHorizontalAlignment(javax.swing.JTextField.LEFT);
-    
+
     initComponents();
     
     // Create JTree
@@ -63,9 +63,9 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
     long now = System.currentTimeMillis();
     startDateChooser.setDate(new Date(now - 3600 * 8 * 1000));
     stopDateChooser.setDate(new Date(now));
-    
+
   }
-  
+
   String getStartDate() {
     String d = ((javax.swing.JSpinner.DefaultEditor) s0.getEditor()).getTextField().getText();
     return d;
@@ -90,13 +90,13 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
   void setTimeInterval(int it) {
     lastTimeCombo.setSelectedIndex(it);
   }
-  
+
   int getTimeInterval() {
     return lastTimeCombo.getSelectedIndex();
   }
-  
+
   long getStepDuration() {
-    
+
       int idx = lastTimeCombo.getSelectedIndex();
       long time = 0;
 
@@ -120,11 +120,11 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
           time = 30 * 86400;
           break;
       }
-      
+
       return time;
-    
+
   }
-  
+
   public void actionPerformed(ActionEvent evt) {
 
     Object src = evt.getSource();
@@ -142,7 +142,7 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
 
   @Override
   public void attributeAction(TreePanel source,ArrayList<AttributeInfo> list) {
- 
+
     // Get attribute information from HDB and add it to the list
     try {
 
@@ -155,26 +155,26 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
 
       // Add to query list
       for(int i=0;i<list.size();i++) {
-        AttributeInfo ai = list.get(i);        
+        AttributeInfo ai = list.get(i);
         if(!AttributeInfo.isInList(ai, parent.selection)) {
 
           if(ai.isString())
             ai.table = true;
-          
+
           if(ai.isNumeric() && !ai.isArray()) {
             ai.selection = AttributeInfo.SEL_Y1;
           }
-          
+
           //if(ai.isNumeric() && ai.isArray()) {
           //  ai.selection = AttributeInfo.SEL_IMAGE;
           //}
-          
+
           if(ai.isState() && !ai.isArray()) {
-            ai.step = true;            
+            ai.step = true;
           }
 
           parent.selection.add(ai);
-          
+
         }
       }
 
@@ -183,9 +183,9 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
     } catch(HdbFailed e) {
       Utils.showError(e.getMessage());
     }
-    
+
   }
-  
+
   int getHdbMode() {
     return hdbModeCombo.getSelectedIndex();
   }
@@ -193,34 +193,34 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
   void setHdbMode(int mode) {
     hdbModeCombo.setSelectedIndex(mode);
   }
-  
+
   void refreshTree() {
 
     treePanel.clearListener();
-    TreePath oldPath = treePanel.getSelectionPath();    
+    TreePath oldPath = treePanel.getSelectionPath();
     rightPanel.remove(treePanel);
-    
-    // Create new tree Panel    
+
+    // Create new tree Panel
     treePanel = new TreePanel(parent.hdb.getReader());
     treePanel.setSelectionPath(oldPath);
-    treePanel.addTreeListener(this);    
-    
-    rightPanel.add(treePanel, BorderLayout.CENTER);        
+    treePanel.addTreeListener(this);
+
+    rightPanel.add(treePanel, BorderLayout.CENTER);
     rightPanel.revalidate();
-    
+
   }
-  
+
   private void moveDate(long step) {
-  
-    long start = startDateChooser.getDate().getTime();    
-    long stop = stopDateChooser.getDate().getTime();    
-    start += step * 1000;    
+
+    long start = startDateChooser.getDate().getTime();
+    long stop = stopDateChooser.getDate().getTime();
+    start += step * 1000;
     stop += step * 1000;
     startDateChooser.setDate(new Date(start));
     stopDateChooser.setDate(new Date(stop));
     parent.performSearch();
     parent.selPanel.updateSelectionList();
-    
+
   }
 
 
@@ -331,7 +331,7 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
   }//GEN-LAST:event_searchButtonActionPerformed
 
   private void forwardButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_forwardButtonActionPerformed
-    // TODO add your handling code here:    
+    // TODO add your handling code here:
     moveDate(getStepDuration());
   }//GEN-LAST:event_forwardButtonActionPerformed
 

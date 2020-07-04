@@ -17,6 +17,7 @@ abstract class TreeNode extends DefaultMutableTreeNode {
   HdbReader reader;
 
   // Create node on the fly and return number of child
+  @Override
   public int getChildCount() {
 
     if(!areChildrenDefined) {
@@ -43,6 +44,7 @@ abstract class TreeNode extends DefaultMutableTreeNode {
   }
 
   // Returns true if the node is a leaf, false otherwise
+  @Override
   public boolean isLeaf() {
     return false;
   }
@@ -78,6 +80,7 @@ abstract class TreeNode extends DefaultMutableTreeNode {
 
    public TreeNodeRenderer() {}
 
+   @Override
    public Component getTreeCellRendererComponent(
        JTree tree,
        Object value,
