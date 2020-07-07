@@ -13,6 +13,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -809,6 +810,8 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     String[] colNames = null;
 
     reset();
+    
+    final HashMap<SignalInfo, AttributeInfo> attributes = new HashMap<>();
 
     // Perform HDB query in a separate thread
     Thread doSearch = new Thread() {
@@ -826,11 +829,12 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
           for(SignalInfo.Interval itl : att.getIntervals())
           {
             HdbReader.SignalInput input = new HdbReader.SignalInput();
-            input.info = att.sigInfo;
+            input.info = new SignalInfo(att.sigInfo);
             input.startDate = startDate;
             input.endDate = stopDate;
             input.info.interval = itl; //this will only be used for aggregate.
             input.info.aggregates = att.getAggregates(itl);
+            attributes.put(input.info, att);
             sigIn.add(input);
           }
         }
@@ -843,26 +847,26 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
           stopR = System.currentTimeMillis();
           infoDialog.addText("Request time=" + (stopR-startR) + " ms");
 
-          // retreive unit
-          for(int i=0;i<sigIn.size();i++) {
+          // retrieve unit
+          for(AttributeInfo att : selection) {
             try {
 
-              switch(sigIn.get(i).info.queryConfig) {
+              switch(att.sigInfo.queryConfig) {
 
                 case HdbSigParam.QUERY_DATA:
-                  if(sigIn.get(i).info.isNumeric()) {
-                    HdbSigParam p = hdb.getReader().getLastParam(sigIn.get(i).info);
-                    selection.get(i).unit = p.unit;
-                    selection.get(i).A1 = p.display_unit;
+                  if(att.sigInfo.isNumeric()) {
+                    HdbSigParam p = hdb.getReader().getLastParam(att.sigInfo);
+                    att.unit = p.unit;
+                    att.A1 = p.display_unit;
                   }
                   break;
 
                 case HdbSigParam.QUERY_CFG_ARCH_PERIOD:
-                  selection.get(i).unit = "ms";
+                  att.unit = "ms";
                   break;
 
                 case HdbSigParam.QUERY_CFG_ARCH_REL_CHANGE:
-                  selection.get(i).unit = "%";
+                  att.unit = "%";
                   break;
 
               }
@@ -873,10 +877,11 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
           }
 
           // Apply conversion factor
-          for(int i=0;i<sigIn.size();i++) {
-            double A1 = selection.get(i).A1;
-            if(A1!=1.0)
-              results[i].applyConversionFactor(A1);
+          for(HdbDataSet result : results)
+          {
+              AttributeInfo att = attributes.get(result.getSigInfo());
+              if(att != null && att.A1 != 1.0)
+                result.applyConversionFactor(att.A1);
           }
 
           // Run python script (if any)
@@ -930,6 +935,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         } catch (HdbFailed e) {
           Utils.showError("HDB getData failed\n" + e.getMessage());
         } catch(Exception e2) {
+            e2.printStackTrace();
           Utils.showError("HDB getData failed\nUnexpected exception " + e2);
           e2.printStackTrace();
         }
@@ -999,9 +1005,9 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     boolean hasImage = false;
 
     // Browse results
-    for (int i = 0; i < results.length; i++) {
+    for (HdbDataSet result : results) {
 
-      AttributeInfo ai = selection.get(i);
+      AttributeInfo ai = attributes.get(result.getSigInfo());
       boolean isRW = ai.isRW();
       ai.dataSize = 0;
       ai.errorSize = 0;
@@ -1061,9 +1067,9 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         double lastValue = Double.NaN;
         double lastWriteValue = Double.NaN;
 
-        for (int j = 0; j < results[i].size(); j++) {
+        for (int j = 0; j < result.size(); j++) {
 
-          HdbData d = results[i].get(j);
+          HdbData d = result.get(j);
           double chartTime = (double)d.getDataTime() / 1000.0;
 
           try {
@@ -1116,11 +1122,12 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         String unitPreffix = "";
         if(ai.unit.length()>0)
           unitPreffix = " (" + ai.unit + ")";
-          colNames[colIdx] = ai.getName() + unitPreffix;
+        
+        colNames[colIdx] = ai.getName() + unitPreffix;
         if(isRW) colNames[colIdx+1] = ai.getName() + "_w" + unitPreffix;
 
-        for (int j = 0; j < results[i].size(); j++) {
-          HdbData d = results[i].get(j);
+        for (int j = 0; j < result.size(); j++) {
+          HdbData d = result.get(j);
 
           if(d.hasFailed()) {
 
@@ -1181,9 +1188,9 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
             colNames[colIdx] = ai.getName() + "[" + aai.idx + "]" + unitPreffix;
             if(isRW) colNames[colIdx+1] = ai.getName() + "_w[" + aai.idx + "]" + unitPreffix;
 
-            for (int j = 0; j < results[i].size(); j++) {
+            for (int j = 0; j < result.size(); j++) {
 
-              HdbData d = results[i].get(j);
+              HdbData d = result.get(j);
               if (d.hasFailed()) {
                 String err = "/Err" + d.getErrorMessage();
                 tablePanel.table.add(err, 1, d.getDataTime(), colIdx);
@@ -1282,19 +1289,19 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       if (ai.isNumeric() && ai.isArray()) {
 
         hasImage = hasImage || (ai.selection == AttributeInfo.SEL_IMAGE);
-        ai.arrayData = results[i];
+        ai.arrayData = result;
         ai.maxArraySize = -1;
-        for(int k=0;k<results[i].size();k++) {
-          if(results[i].get(k).size() > ai.maxArraySize) {
-            ai.maxArraySize = results[i].get(k).size();
+        for(int k=0;k<result.size();k++) {
+          if(result.get(k).size() > ai.maxArraySize) {
+            ai.maxArraySize = result.get(k).size();
           }
         }
 
       }
 
       // Errors
-      for (int j = 0; j < results[i].size(); j++) {
-        HdbData d = results[i].get(j);
+      for (int j = 0; j < result.size(); j++) {
+        HdbData d = result.get(j);
         if(d.hasFailed()) {
           errorDialog.addError(ai.getName(), d);
           ai.errorSize++;
@@ -1337,7 +1344,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
     // Update XAxis selection
     chartPanel.resetXItem();
-    for(AttributeInfo ai:selection) {
+    for(AttributeInfo ai : selection) {
 
       if(ai.isNumeric()) {
 

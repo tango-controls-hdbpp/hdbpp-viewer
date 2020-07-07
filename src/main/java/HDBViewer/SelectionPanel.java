@@ -13,7 +13,6 @@ import fr.esrf.tangoatk.widget.util.chart.CfFileReader;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -25,11 +24,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.EventObject;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.swing.DefaultCellEditor;
@@ -43,13 +38,11 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListCellRenderer;
-import javax.swing.event.CellEditorListener;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import org.tango.jhdb.HdbFailed;
-import org.tango.jhdb.HdbSigInfo;
 import org.tango.jhdb.HdbSigParam;
+import org.tango.jhdb.SignalInfo;
 import org.tango.jhdb.data.HdbData;
 
 /**
@@ -93,13 +86,13 @@ public class SelectionPanel extends javax.swing.JPanel {
       this.arrayItem = arrayItem;
       if(!selected.containsKey(idx))
       {
-        selected.put(idx, HdbSigInfo.Interval.NONE);
+        selected.put(idx, SignalInfo.Interval.NONE);
       }
     }
     int attIdx;
     int arrayItem;
     boolean isWrite;
-    static Map<Integer, HdbSigInfo.Interval> selected;
+    static Map<Integer, SignalInfo.Interval> selected;
     static
     {
       selected = new HashMap<>();
@@ -209,7 +202,7 @@ public class SelectionPanel extends javax.swing.JPanel {
   class EnumListCell extends DefaultCellEditor implements TableCellRenderer {
     JLabel label = new JLabel("");
     JComboCheckBox aggCombo = new JComboCheckBox(HdbData.Aggregate.values());
-    JComboCheckBox intervalCombo = new JComboCheckBox(HdbSigInfo.Interval.values());
+    JComboCheckBox intervalCombo = new JComboCheckBox(SignalInfo.Interval.values());
     JComboCheckBox ret;
 
     EnumListCell()
@@ -240,7 +233,7 @@ public class SelectionPanel extends javax.swing.JPanel {
       AttributeInfo ai = parent.selection.get(attIdx);
       if(column == INTERVAL_IDX)
       {
-        label.setText(SelRowItem.selected.getOrDefault(attIdx, HdbSigInfo.Interval.NONE).toString());
+        label.setText(SelRowItem.selected.getOrDefault(attIdx, SignalInfo.Interval.NONE).toString());
       }
       if(column == AGGREGATE_IDX)
       {
@@ -271,7 +264,7 @@ public class SelectionPanel extends javax.swing.JPanel {
       AttributeInfo ai = parent.selection.get(attIdx);
       if(col == INTERVAL_IDX)
       {
-        Set<HdbSigInfo.Interval> intervals = ai.getIntervals();
+        Set<SignalInfo.Interval> intervals = ai.getIntervals();
         intervalCombo.select(intervals);
         ret = intervalCombo;
       }
@@ -308,7 +301,7 @@ public class SelectionPanel extends javax.swing.JPanel {
         int attIdx = rowToIdx[row].attIdx;
 
         if(column == AGGREGATE_IDX)
-          return SelRowItem.selected.get(attIdx) != HdbSigInfo.Interval.NONE;
+          return SelRowItem.selected.get(attIdx) != SignalInfo.Interval.NONE;
       }
       return true;
     }
@@ -357,7 +350,7 @@ public class SelectionPanel extends javax.swing.JPanel {
         case AGGREGATE_IDX:
           return HdbData.Aggregate.class;
         case INTERVAL_IDX:
-          return HdbSigInfo.Interval.class;
+          return SignalInfo.Interval.class;
         case RECORDS_IDX:
           return String.class;
         case TABLE_IDX:
@@ -386,16 +379,16 @@ public class SelectionPanel extends javax.swing.JPanel {
       boolean b;
       switch (column) {
         case INTERVAL_IDX:
-          HdbSigInfo.Interval interval = (HdbSigInfo.Interval)aValue;
+          SignalInfo.Interval interval = (SignalInfo.Interval)aValue;
           SelRowItem.selected.put(attIdx, interval);
-          if(interval == HdbSigInfo.Interval.NONE)
+          if(interval == SignalInfo.Interval.NONE)
           {
-            parent.selection.get(attIdx).toggleAggregate(HdbSigInfo.Interval.NONE, HdbData.Aggregate.ROWS_COUNT);
+            parent.selection.get(attIdx).toggleAggregate(SignalInfo.Interval.NONE, HdbData.Aggregate.ROWS_COUNT);
           }
           break;
         case AGGREGATE_IDX:
           HdbData.Aggregate agg = (HdbData.Aggregate)aValue;
-          parent.selection.get(attIdx).toggleAggregate(SelRowItem.selected.getOrDefault(attIdx, HdbSigInfo.Interval.NONE), agg);
+          parent.selection.get(attIdx).toggleAggregate(SelRowItem.selected.getOrDefault(attIdx, SignalInfo.Interval.NONE), agg);
           break;
         case TABLE_IDX: // Table
           b = ((Boolean) aValue).booleanValue();
@@ -503,8 +496,8 @@ public class SelectionPanel extends javax.swing.JPanel {
     selTable = new JTable(selModel);
     selTable.setDefaultRenderer(Boolean.class, new BooleanCellRenderer());
     EnumListCell aggRender = new EnumListCell();
-    selTable.setDefaultRenderer(HdbSigInfo.Interval.class, aggRender);
-    selTable.setDefaultEditor(HdbSigInfo.Interval.class, aggRender);
+    selTable.setDefaultRenderer(SignalInfo.Interval.class, aggRender);
+    selTable.setDefaultEditor(SignalInfo.Interval.class, aggRender);
     selTable.setDefaultRenderer(HdbData.Aggregate.class, aggRender);
     selTable.setDefaultEditor(HdbData.Aggregate.class, aggRender);
     JScrollPane selView = new JScrollPane(selTable);
@@ -537,7 +530,7 @@ public class SelectionPanel extends javax.swing.JPanel {
     int attIdx = rowToIdx[row].attIdx;
 
     if(column == AGGREGATE_IDX)
-      return SelRowItem.selected.get(attIdx) != HdbSigInfo.Interval.NONE;
+      return SelRowItem.selected.get(attIdx) != SignalInfo.Interval.NONE;
 
     if(column<TABLE_IDX)
       return false;
@@ -866,7 +859,7 @@ public class SelectionPanel extends javax.swing.JPanel {
 
         // Update type info
         for(int i=0;i<list.size();i++) {
-          HdbSigInfo si = parent.hdb.getReader().getSigInfo(list.get(i).getFullName(), HdbSigParam.QUERY_DATA);
+          SignalInfo si = parent.hdb.getReader().getSigInfo(list.get(i).getFullName(), HdbSigParam.QUERY_DATA);
           list.get(i).sigInfo = si;
         }
 
