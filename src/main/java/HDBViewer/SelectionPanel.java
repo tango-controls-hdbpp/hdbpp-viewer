@@ -732,10 +732,15 @@ public class SelectionPanel extends javax.swing.JPanel {
 
       AttributeInfo ai = parent.selection.get(i);
 
+      SignalInfo.Interval interval = SelRowItem.selected.getOrDefault(i, SignalInfo.Interval.NONE);
+      int dataSize = ai.getDataSize(interval);
+      int errorSize = ai.getErrorSize(interval);
+              
+              
       objs[j][HOST_IDX] = ai.host;
       objs[j][ATTRIBUTE_IDX] = ai.getName();
       objs[j][TYPE_IDX] = ai.getType();
-      objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+      objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
       objs[j][TABLE_IDX] = ai.table;
       objs[j][STEP_IDX] = ai.step;
       objs[j][Y1_IDX] = (ai.selection == AttributeInfo.SEL_Y1);
@@ -750,7 +755,7 @@ public class SelectionPanel extends javax.swing.JPanel {
           objs[j][HOST_IDX] = ai.host;
           objs[j][ATTRIBUTE_IDX] = ai.getName() + "[" + aai.idx + "]";
           objs[j][TYPE_IDX] = "Item #" + aai.idx;
-          objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+          objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
           objs[j][TABLE_IDX] = aai.table;
           objs[j][STEP_IDX] = aai.step;
           objs[j][Y1_IDX] = (aai.selection == AttributeInfo.SEL_Y1);
@@ -767,7 +772,7 @@ public class SelectionPanel extends javax.swing.JPanel {
         objs[j][HOST_IDX] = ai.host;
         objs[j][ATTRIBUTE_IDX] = ai.getName()+"_w";
         objs[j][TYPE_IDX] = ai.getType();
-        objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+        objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
         objs[j][TABLE_IDX] = ai.table;
         objs[j][STEP_IDX] = ai.step;
         objs[j][Y1_IDX] = (ai.wselection == AttributeInfo.SEL_Y1);
@@ -782,7 +787,7 @@ public class SelectionPanel extends javax.swing.JPanel {
             objs[j][HOST_IDX] = ai.host;
             objs[j][ATTRIBUTE_IDX] = ai.getName() + "_w[" + aai.idx + "]";
             objs[j][TYPE_IDX] = "Write item #" + aai.idx;
-            objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+            objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
             objs[j][TABLE_IDX] = aai.table;
             objs[j][STEP_IDX] = aai.step;
             objs[j][Y1_IDX] = (aai.wselection == AttributeInfo.SEL_Y1);

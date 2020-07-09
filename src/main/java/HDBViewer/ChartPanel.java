@@ -47,6 +47,7 @@ class XAxisItem {
     return ai!=null && aai!=null;    
   }
   
+  @Override
   public String toString() {
     if( isScalar() )
       return ai.getName();    
@@ -108,10 +109,10 @@ public class ChartPanel extends javax.swing.JPanel implements ActionListener {
   
     boolean b = onlyErrorCheck.isSelected();
     for(AttributeInfo ai:parent.selection) {
-      if(ai.chartData!=null)
-        ai.chartData.setClickable(!b);
-      if(ai.wchartData!=null)
-        ai.wchartData.setClickable(!b);
+      if(ai.getDataView()!=null)
+        ai.getDataView().setClickable(!b);
+      if(ai.getWriteDataView()!=null)
+        ai.getWriteDataView().setClickable(!b);
     }
     
   }
@@ -124,24 +125,25 @@ public class ChartPanel extends javax.swing.JPanel implements ActionListener {
 
     if(view) {
       for(AttributeInfo ai:parent.selection) {
-        if(ai.chartData!=null) {
-          JLAxis a1 = ai.chartData.getAxis();
-          if(a1!=null) a1.addDataView(ai.errorData);
-        } else if (ai.wchartData!=null) {
-          JLAxis a2 = ai.wchartData.getAxis();
-          if(a2!=null) a2.addDataView(ai.errorData);
+        if(ai.getDataView()!=null) {
+          JLAxis a1 = ai.getDataView().getAxis();
+          if(a1!=null) a1.addDataView(ai.getErrorDataView());
+        } else if (ai.getWriteDataView()!=null) {
+          JLAxis a2 = ai.getWriteDataView().getAxis();
+          if(a2!=null) a2.addDataView(ai.getErrorDataView());
         }
       }
     } else {
       for(AttributeInfo ai:parent.selection) {
-        if(ai.errorData!=null)
-          ai.errorData.removeFromAxis();
+        if(ai.getErrorDataView()!=null)
+          ai.getErrorDataView().removeFromAxis();
       }
     }
     chart.repaint();
 
   }
 
+  @Override
   public void actionPerformed(ActionEvent e) {
     
     if (!updateXCombo) {
@@ -161,7 +163,7 @@ public class ChartPanel extends javax.swing.JPanel implements ActionListener {
         JLDataView dvx = null;
         
         if(src.isScalar()) {
-          dvx = src.ai.chartData;
+          dvx = src.ai.getDataView();
         } else if(src.isArrayItem()) {
           dvx = src.aai.chartData;
         }
@@ -185,7 +187,7 @@ public class ChartPanel extends javax.swing.JPanel implements ActionListener {
   public void resetAll() {
     
     // Remove views
-    ArrayList<JLDataView> views = new ArrayList<JLDataView>();
+    ArrayList<JLDataView> views = new ArrayList<>();
     views.addAll(chart.getY1Axis().getViews());
     views.addAll(chart.getY2Axis().getViews());
     for (int i = 0; i < views.size(); i++)

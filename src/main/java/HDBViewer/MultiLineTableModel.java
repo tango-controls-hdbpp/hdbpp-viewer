@@ -121,7 +121,7 @@ public class MultiLineTableModel extends AbstractTableModel {
   }
   
   public void reset() {
-    data = new ArrayList<RowItem>();
+    data = new ArrayList<>();
     colNames = new String[0];    
     errorIndex = new int[0];
  }

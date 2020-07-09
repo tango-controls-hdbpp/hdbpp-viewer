@@ -536,11 +536,11 @@ public class ConfigFileReader {
         } else if ( propName.equals("selection") ) {
           ai.selection = parseInt();
         } else if ( propName.equals("dv") ) {          
-          ai.dvSettings = parseSettingsSection();
+          ai.setDataViewSettings(parseSettingsSection());
         } else if ( propName.equals("wselection") ) {
           ai.wselection = parseInt();
         } else if ( propName.equals("wdv") ) {
-          ai.wdvSettings = parseSettingsSection();
+          ai.setWriteDataViewSettings(parseSettingsSection());
         } else if ( propName.equals("expanded") ) {
           ai.arrAttInfos = parseExpanded();
         } else {
