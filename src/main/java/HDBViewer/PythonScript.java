@@ -12,6 +12,7 @@ import org.python.core.PyList;
 import org.python.util.PythonInterpreter;
 import org.tango.jhdb.HdbFailed;
 import org.tango.jhdb.HdbSigInfo;
+import org.tango.jhdb.SignalInfo;
 import org.tango.jhdb.data.HdbData;
 import org.tango.jhdb.data.HdbDataSet;
 import org.tango.jhdb.data.HdbDouble;
@@ -102,6 +103,7 @@ public class PythonScript {
       String attName = (String)attList.get(0);
       int lgth = ((Integer) attList.get(1)).intValue();
       ArrayList<HdbData> list = new ArrayList<>();
+      SignalInfo si = new SignalInfo();
       
       for(int j=0;j<lgth;j++) {
         
@@ -120,7 +122,11 @@ public class PythonScript {
         {
             d = inputs[0].get(0).copy(); // we use the first input type as default type
         }
-              
+        
+        if(j==0) {
+          si = d.info;
+          si.name = attName;
+        }
         
         
           if (d.info.isNumeric()) {
@@ -153,7 +159,9 @@ public class PythonScript {
                 
       }
       
-      result[i] = new HdbDataSet(list);
+      result[i] = new HdbDataSet(list);      
+      result[i].setSigInfo(si);
+      
     }
     
 
