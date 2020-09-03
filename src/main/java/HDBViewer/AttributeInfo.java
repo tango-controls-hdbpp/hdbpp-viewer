@@ -2,8 +2,8 @@ package HDBViewer;
 
 import fr.esrf.tangoatk.widget.util.chart.JLDataView;
 import java.util.ArrayList;
-import org.tango.jhdb.HdbSigInfo;
 import org.tango.jhdb.HdbSigParam;
+import org.tango.jhdb.SignalInfo;
 import org.tango.jhdb.data.HdbData;
 import org.tango.jhdb.data.HdbDataSet;
 
@@ -20,10 +20,10 @@ public class AttributeInfo {
 
   public String  host;          // Tango HOST
   public String  name;          // 4 fields attribute name
-  public String  type;          // HdbType of the signal
+  private String  type = "";          // HdbType of the signal
   public String  unit;          // Unit
   public double  A1;            // Conversion factor
-  public HdbSigInfo sigInfo;    // Signal info struct
+  public SignalInfo sigInfo;    // Signal info struct
   public boolean step;          // Step mode
   public boolean table;         // Display in HDB table
   public int     selection;     // Selection mode
@@ -98,6 +98,15 @@ public class AttributeInfo {
     return this.arrAttInfos.size()>0;
   }  
   
+  public String getType()
+  {
+      if(type.isEmpty())
+      {
+          type = (sigInfo.isArray()? "array_" : "scalar_") + sigInfo.dataType.toString().toLowerCase() + "_" + sigInfo.access.toString().toLowerCase();
+      }
+      return type;
+  }
+
   /**
    * Expand array attribute items
    * @param ids List of index to be expanded

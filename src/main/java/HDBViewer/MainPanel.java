@@ -22,6 +22,7 @@ import org.tango.jhdb.HdbProgressListener;
 import org.tango.jhdb.HdbReader;
 import org.tango.jhdb.HdbSigInfo;
 import org.tango.jhdb.HdbSigParam;
+import org.tango.jhdb.SignalInfo;
 import org.tango.jhdb.data.HdbData;
 import org.tango.jhdb.data.HdbDataSet;
 import org.tango.jhdb.data.HdbFloatArray;
@@ -256,7 +257,6 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     ai.host = host;
     ai.name = name;
     HdbSigInfo si = hdb.getReader().getSigInfo(ai.getFullName());
-    ai.type = HdbSigInfo.typeStr[si.type].substring(5).toLowerCase();
     ai.sigInfo = si;
 
     AttributeInfo eai = AttributeInfo.getFromList(ai, selection);
@@ -820,7 +820,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         } catch(Exception e) {}
       
         // Array of sigIds
-        HdbSigInfo[] sigIn = new HdbSigInfo[selection.size()];
+        SignalInfo[] sigIn = new SignalInfo[selection.size()];
         for (int i = 0; i < sigIn.length; i++) {
           sigIn[i] = selection.get(i).sigInfo;
         }
@@ -891,14 +891,18 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
               ai.host = "pyscript";
               ai.name = pyResults[i].getName();
               ai.table = true;
-              int type = pyResults[i].getType();
-              if(type<=0 || type>HdbSigInfo.TYPE_ARRAY_ULONG64_RW) {
-                throw new HdbFailed("Wrong type code " + type);
-              }              
-              ai.type = HdbSigInfo.typeStr[type].substring(5).toLowerCase();
-              HdbSigInfo dummySi = new HdbSigInfo();
+              SignalInfo dummySi = new SignalInfo();
               dummySi.name = ai.name;
-              dummySi.type = type;
+              int resultIdx = 0;
+              if(i < results.length)
+              {
+                  resultIdx = i;
+              }
+              SignalInfo inputInfo = results[resultIdx].get(0).info;
+              // Assume same type as the input.
+              dummySi.dataType = inputInfo.dataType;
+              dummySi.format = inputInfo.format;
+              dummySi.access = inputInfo.access;
               dummySi.sigId = ai.host + ":" + ai.name;
               ai.sigInfo = dummySi;
               

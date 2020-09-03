@@ -150,7 +150,6 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
       for(int i=0;i<list.size();i++) {
         int queryMode = list.get(i).queryMode;
         HdbSigInfo si = parent.hdb.getReader().getSigInfo(list.get(i).getFullName(),queryMode);
-        list.get(i).type = HdbSigInfo.typeStr[si.type].substring(5).toLowerCase();
         list.get(i).sigInfo = si;
       }
 
