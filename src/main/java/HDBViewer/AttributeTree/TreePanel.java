@@ -44,6 +44,7 @@ class RootNode extends TreeNode {
     this.reader = reader;
   }
   
+  @Override
   void populateNode() {
 
     if(reader==null)
@@ -51,18 +52,21 @@ class RootNode extends TreeNode {
     
     try {
       String[] hosts = reader.getHosts();
-      for(int i=0;i<hosts.length;i++)
-        add(new HostNode(reader,hosts[i]));
+      for (String host : hosts) {
+        add(new HostNode(reader, host));
+      }
     } catch(HdbFailed e) {
       Utils.showError(e.getMessage());
     }
     
   }
   
+  @Override
   ImageIcon getIcon() {
     return TreeNodeRenderer.hosticon;
   }
   
+  @Override
   public String toString() {
     return "Root";
   }
@@ -80,20 +84,24 @@ class HostNode extends TreeNode {
     alias = HostAlias.getInstance().getAliasFor(host);
   }
   
+  @Override
   void populateNode() {    
     try {
       String[] domains = reader.getDomains(host);
-      for(int i=0;i<domains.length;i++)
-        add(new DomainNode(reader,host,domains[i]));
+      for (String domain : domains) {
+        add(new DomainNode(reader, host, domain));
+      }
     } catch(HdbFailed e) {
       Utils.showError(e.getMessage());
     }
   }
   
+  @Override
   ImageIcon getIcon() {
     return TreeNodeRenderer.hosticon;
   }
   
+  @Override
   public String toString() {
     return alias;
   }
@@ -111,16 +119,19 @@ class DomainNode extends TreeNode {
     this.domain = domain;
   }
   
+  @Override
   void populateNode() {
     try {
       String[] families = reader.getFamilies(host,domain);
-      for(int i=0;i<families.length;i++)
-        add(new FamilyNode(reader,host,domain,families[i]));
+      for (String family : families) {
+        add(new FamilyNode(reader, host, domain, family));
+      }
     } catch(HdbFailed e) {
       Utils.showError(e.getMessage());
     }    
   }
   
+  @Override
   public String toString() {
     return domain;
   }
@@ -140,16 +151,19 @@ class FamilyNode extends TreeNode {
     this.family = family;
   }
   
+  @Override
   void populateNode() {
     try {
       String[] members = reader.getMembers(host,domain,family);
-      for(int i=0;i<members.length;i++)
-        add(new MemberNode(reader,host,domain,family,members[i]));
+      for (String member : members) {
+        add(new MemberNode(reader, host, domain, family, member));
+      }
     } catch(HdbFailed e) {
       Utils.showError(e.getMessage());
     }    
   }
   
+  @Override
   public String toString() {
     return family;
   }
@@ -171,20 +185,24 @@ class MemberNode extends TreeNode {
     this.member = member;
   }
   
+  @Override
   void populateNode() {
     try {
       String[] names = reader.getNames(host,domain,family,member);
-      for(int i=0;i<names.length;i++)
-        add(new AttributeNode(reader,host,domain,family,member,names[i]));
+      for (String name : names) {
+        add(new AttributeNode(reader, host, domain, family, member, name));
+      }
     } catch(HdbFailed e) {
       Utils.showError(e.getMessage());
     }    
   }
   
+  @Override
   ImageIcon getIcon() {
     return TreeNodeRenderer.devicon;
   }
   
+  @Override
   public String toString() {
     return member;
   }
@@ -208,17 +226,21 @@ class AttributeNode extends TreeNode {
     this.name = name;
   }
   
+  @Override
   void populateNode() {
   }
 
+  @Override
   public boolean isLeaf() {
     return true;
   }
   
+  @Override
   ImageIcon getIcon() {
     return TreeNodeRenderer.atticon;    
   }
   
+  @Override
   public String toString() {
     return name;
   }
@@ -275,13 +297,14 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     add(treeView, BorderLayout.CENTER);
     setPreferredSize(new Dimension(250,400));
     setMinimumSize(new Dimension(10,10));
-    listeners = new ArrayList<TreeListener>();
+    listeners = new ArrayList<>();
 
     actionMenu = new JPopupMenu();
 
     addMenu = new JMenuItem("Add");
     actionMenu.add(addMenu);
     addMenu.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_DATA);
       }      
@@ -293,6 +316,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfAll = new JMenuItem("All");
     addConfMenu.add(addConfAll);
     addConfAll.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_ALL);
       }      
@@ -301,6 +325,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfLabel = new JMenuItem("Label");
     addConfMenu.add(addConfLabel);
     addConfLabel.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_LABEL);
       }      
@@ -309,6 +334,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfUnit = new JMenuItem("Unit");
     addConfMenu.add(addConfUnit);
     addConfUnit.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_UNIT);
       }      
@@ -317,6 +343,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfDisplayUnit = new JMenuItem("Display Unit");
     addConfMenu.add(addConfDisplayUnit);
     addConfDisplayUnit.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_DISPLAY_UNIT);
       }      
@@ -325,6 +352,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfStandardUnit = new JMenuItem("Standard Unit");
     addConfMenu.add(addConfStandardUnit);
     addConfStandardUnit.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_STANDARD_UNIT);
       }      
@@ -333,6 +361,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfFormat = new JMenuItem("Format");
     addConfMenu.add(addConfFormat);
     addConfFormat.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_FORMAT);
       }      
@@ -341,6 +370,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfArchRelChange = new JMenuItem("Arch Rel Change");
     addConfMenu.add(addConfArchRelChange);
     addConfArchRelChange.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_ARCH_REL_CHANGE);
       }      
@@ -349,6 +379,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfArchAbsChange = new JMenuItem("Arch Abs Change");
     addConfMenu.add(addConfArchAbsChange);
     addConfArchAbsChange.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_ARCH_ABS_CHANGE);
       }      
@@ -357,6 +388,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfArchPeriod = new JMenuItem("Arch Period");
     addConfMenu.add(addConfArchPeriod);
     addConfArchPeriod.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_ARCH_PERIOD);
       }      
@@ -365,6 +397,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     addConfDescription = new JMenuItem("Description");
     addConfMenu.add(addConfDescription);
     addConfDescription.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
         fireTreeListener(HdbSigParam.QUERY_CFG_DESCRIPTION);
       }      
@@ -378,7 +411,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
   
   public ArrayList<AttributeInfo> getSelection(int queryMode) {
     
-    ArrayList<AttributeInfo> ret = new ArrayList<AttributeInfo>();
+    ArrayList<AttributeInfo> ret = new ArrayList<>();
     TreePath[] paths = tree.getSelectionPaths();
     
     for(int i=0;i<paths.length;i++) {
@@ -404,7 +437,7 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
   
   }
   
-  public TreeNode searchNode(TreeNode startNode,String value) {
+  private TreeNode searchNode(TreeNode startNode,String value) {
 
     int numChild = treeModel.getChildCount(startNode);
     int i = 0;
@@ -481,11 +514,13 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     
   }
   
+  @Override
   public void valueChanged(TreeSelectionEvent e) {
 
 
   }
 
+  @Override
   public void mousePressed(MouseEvent e) {
 
     TreePath selPath = tree.getPathForLocation(e.getX(), e.getY());
@@ -521,9 +556,13 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
     }
 
   }
+  @Override
   public void mouseClicked(MouseEvent e) {}
+  @Override
   public void mouseReleased(MouseEvent e) {}
+  @Override
   public void mouseEntered(MouseEvent e) {}
+  @Override
   public void mouseExited(MouseEvent e) {}
 
   @Override

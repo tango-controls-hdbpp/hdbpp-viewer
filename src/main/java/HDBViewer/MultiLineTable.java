@@ -1,6 +1,8 @@
 package HDBViewer;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Set;
 import javax.swing.*;
 
 /* A specific table for HDB */
@@ -29,6 +31,13 @@ public class MultiLineTable extends JTable {
 
   public void add(String value,int quality,long time,int colIdx) {
     tableModel.add(value, quality, time, colIdx);
+  }
+  
+  public void add(String value,int quality,long time,Collection<Integer> colIdxes) {
+    for(int colIdx : colIdxes)
+    {
+      tableModel.add(value, quality, time, colIdx);
+    }
   }
   
   public void doMicroSec(boolean doMicro) {

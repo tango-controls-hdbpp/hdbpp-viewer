@@ -13,101 +13,43 @@ import fr.esrf.tangoatk.widget.util.chart.CfFileReader;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.ListCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import org.tango.jhdb.HdbFailed;
-import org.tango.jhdb.HdbSigInfo;
+import org.tango.jhdb.HdbSigParam;
+import org.tango.jhdb.SignalInfo;
+import org.tango.jhdb.data.HdbData;
 
 /**
  *
  * @author pons
  */
 
-class BooleanCellRenderer  implements TableCellRenderer {
-
-  private final static Color backColor = new Color(240,240,255);  
-  private final JCheckBox checkBox;
-  private final JButton button;
-  private final JLabel  empty;
-          
-  BooleanCellRenderer() {
-    checkBox = new JCheckBox();
-    empty = new JLabel("");
-    checkBox.setHorizontalAlignment(JLabel.CENTER);
-    button = new JButton("Expand");
-    button.setMargin(new Insets(2,2,2,2));
-    button.setFont(new Font("Dialog",Font.PLAIN,12));
-  }
-  
-  private SelectionPanel getParent(JTable table) {
-    
-    Container c = table.getParent();
-    boolean found = false;
-    while(!found && c!=null) {
-      found = c instanceof SelectionPanel;
-      if(!found) c = c.getParent();
-    }
-    
-    return (SelectionPanel)c;
-    
-  }
-  
-  public Component getTableCellRendererComponent(JTable table,Object value,
-												 boolean isSelected, boolean hasFocus, int row, int column) {
-    
-    Boolean b = (Boolean)value;
-    SelectionPanel p = getParent(table);
-    
-    if(!p.isEditable(row,column)) {
-      return empty;
-    }
-
-    int attIdx = p.rowToIdx[row].attIdx;
-    int item = p.rowToIdx[row].arrayItem;
-    AttributeInfo ai = p.parent.selection.get(attIdx);
-
-    if(column==6 || column==7) {
-      
-      // Draw a button for array attribute in the Y1 and Y2
-      if(ai.isArray() && item==-1) {
-        if(ai.isNumeric()) {
-          button.setText("Expand");
-          return button;
-        }
-      }
-      
-    }
-
-    checkBox.setSelected(b);
-    if(column>=6)
-      checkBox.setBackground(backColor);
-    else
-      checkBox.setBackground(Color.WHITE);
-    
-    
-
-    return checkBox;
-    
-  }
-  
-}
 
 
 public class SelectionPanel extends javax.swing.JPanel {
@@ -116,6 +58,8 @@ public class SelectionPanel extends javax.swing.JPanel {
     "Tango Host",
     "Attribute",
     "Type",
+    "Interval",
+    "Agg.",
     "Records",
     "Table",
     "Step",
@@ -123,22 +67,417 @@ public class SelectionPanel extends javax.swing.JPanel {
     "Sel. Y2",
     "Sel. Img"};
 
-  class SelRowItem {
+  private final int HOST_IDX = 0;
+  private final int ATTRIBUTE_IDX = 1;
+  private final int TYPE_IDX = 2;
+  private final int INTERVAL_IDX = 3;
+  private final int AGGREGATE_IDX = 4;
+  private final int RECORDS_IDX = 5;
+  private final int TABLE_IDX = 6;
+  private final int STEP_IDX = 7;
+  private final int Y1_IDX = 8;
+  private final int Y2_IDX = 9;
+  private final int IMG_IDX = 10;
+
+  private static class SelRowItem {
     SelRowItem(int idx,boolean write,int arrayItem) {
       attIdx = idx;
       isWrite = write;
       this.arrayItem = arrayItem;
+      if(!selected.containsKey(idx))
+      {
+        selected.put(idx, SignalInfo.Interval.NONE);
+      }
     }
     int attIdx;
     int arrayItem;
     boolean isWrite;
+    static Map<Integer, SignalInfo.Interval> selected;
+    static
+    {
+      selected = new HashMap<>();
+    }
+  }
+
+  private static class JComboCheckBox extends JComboBox<Enum<?>> {
+
+    private Set<? extends Enum<?>> selection;
+
+    JComboCheckBox(Enum<?>[] items)
+    {
+      super(items);
+      setRenderer(new ComboBoxRenderer());
+    }
+
+    private void select(Set<? extends Enum<?>> selected)
+    {
+      selection = selected;
+    }
+
+    class ComboBoxRenderer implements ListCellRenderer<Enum<?>> {
+      JCheckBox cb = new JCheckBox();
+      JLabel label = new JLabel();
+      public ComboBoxRenderer()
+      {
+        setOpaque(true);
+      }
+
+      @Override
+      public Component getListCellRendererComponent(JList<? extends Enum<?>> list, Enum<?> value, int index,
+                  boolean isSelected, boolean cellHasFocus) {
+        Component ret;
+        switch(index)
+        {
+          case -1:
+            label.setText(value.toString());
+            ret = label;
+            break;
+          default:
+            cb.setText(value.toString());
+            cb.setSelected(selection.contains(value));
+            ret = cb;
+        }
+        return ret;
+      }
+    }
+  }
+
+  private final static Color backColor = new Color(240,240,255);
+  class BooleanCellRenderer implements TableCellRenderer {
+
+    private final JCheckBox checkBox;
+    private final JButton button;
+    private final JLabel  empty;
+
+    BooleanCellRenderer() {
+      checkBox = new JCheckBox();
+      empty = new JLabel("");
+      checkBox.setHorizontalAlignment(JLabel.CENTER);
+      button = new JButton("Expand");
+      button.setMargin(new Insets(2,2,2,2));
+      button.setFont(new Font("Dialog",Font.PLAIN,12));
+    }
+
+    private SelectionPanel getParent() {
+      return SelectionPanel.this;
+    }
+
+    @Override
+    public Component getTableCellRendererComponent(JTable table,Object value,
+         boolean isSelected, boolean hasFocus, int row, int column) {
+
+      Boolean b = (Boolean)value;
+      SelectionPanel p = getParent();
+
+      if(!p.isEditable(row,column)) {
+        return empty;
+      }
+
+      int attIdx = p.rowToIdx[row].attIdx;
+      int item = p.rowToIdx[row].arrayItem;
+      AttributeInfo ai = p.parent.selection.get(attIdx);
+
+      if(column == Y1_IDX || column == Y2_IDX) {
+
+       // Draw a button for array attribute in the Y1 and Y2
+        if(ai.isArray() && item==-1) {
+          if(ai.isNumeric()) {
+            button.setText("Expand");
+            return button;
+          }
+        }
+
+      }
+
+      checkBox.setSelected(b);
+      if(column >= Y1_IDX)
+        checkBox.setBackground(backColor);
+      else
+        checkBox.setBackground(Color.WHITE);
+
+      return checkBox;
+    }
+  }
+
+  class EnumListCell extends DefaultCellEditor implements TableCellRenderer {
+    JLabel label = new JLabel("");
+    JComboCheckBox aggCombo = new JComboCheckBox(HdbData.Aggregate.values());
+    JComboCheckBox intervalCombo = new JComboCheckBox(SignalInfo.Interval.values());
+    JComboCheckBox ret;
+
+    EnumListCell()
+    {
+      super(new JComboBox<>());
+      aggCombo.addActionListener(new ActionListener()
+              {
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+          stopEditing();
+        }
+
+              });
+        intervalCombo.addActionListener(new ActionListener()
+                {
+          @Override
+          public void actionPerformed(ActionEvent ae) {
+            stopEditing();
+          }
+
+                });
+    }
+
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value,
+         boolean isSelected, boolean hasFocus, int row, int column) {
+      int attIdx = rowToIdx[row].attIdx;
+      AttributeInfo ai = parent.selection.get(attIdx);
+      if(column == INTERVAL_IDX)
+      {
+        label.setText(SelRowItem.selected.getOrDefault(attIdx, SignalInfo.Interval.NONE).toString());
+      }
+      if(column == AGGREGATE_IDX)
+      {
+        Set<HdbData.Aggregate> aggregates = ai.getAggregates(SelRowItem.selected.get(attIdx));
+        switch(aggregates.size())
+        {
+          case 0:
+            label.setText("No selection");
+            break;
+          case 1:
+            label.setText(aggregates.iterator().next().toString());
+            break;
+          default:
+            label.setText("Multi...");
+        }
+      }
+      if(column >= Y1_IDX)
+        label.setBackground(backColor);
+      else
+        label.setBackground(Color.WHITE);
+      return label;
+    }
+
+    @Override
+    public Component getTableCellEditorComponent(JTable jtable, Object o, boolean bln, int row, int col)
+    {
+      int attIdx = rowToIdx[row].attIdx;
+      AttributeInfo ai = parent.selection.get(attIdx);
+      if(col == INTERVAL_IDX)
+      {
+        Set<SignalInfo.Interval> intervals = ai.getIntervals();
+        intervalCombo.select(intervals);
+        ret = intervalCombo;
+      }
+      if(col == AGGREGATE_IDX)
+      {
+        Set<HdbData.Aggregate> aggregates = ai.getAggregates(SelRowItem.selected.get(attIdx));
+        aggCombo.select(aggregates);
+        ret = aggCombo;
+      }
+      return ret;
+    }
+
+    @Override
+    public Object getCellEditorValue() {
+      return ret.getSelectedItem();
+    }
+/*
+    @Override
+    public boolean isCellEditable(EventObject eo) {
+      Object source = eo.getSource();
+      if(source instanceof JTable)
+      {
+        JTable table = (JTable)source;
+        int test = table.getEditingColumn();
+        int testr = table.getEditingRow();
+
+        Component testc = table.get;
+
+        int column = table.getSelectedColumn();
+        int row = table.getSelectedRow();
+        if(column == INTERVAL_IDX)
+          return true;
+
+        int attIdx = rowToIdx[row].attIdx;
+
+        if(column == AGGREGATE_IDX)
+          return SelRowItem.selected.get(attIdx) != SignalInfo.Interval.NONE;
+      }
+      return true;
+    }
+
+    @Override
+    public boolean shouldSelectCell(EventObject eo) {
+      return !combo.isPopupVisible();
+    }
+*/
+    private boolean stopEditing()
+    {
+      return super.stopCellEditing();
+    }
+
+    @Override
+    public boolean stopCellEditing() {
+      cancelCellEditing();
+      return true;
+    }
+/*
+    @Override
+    public void cancelCellEditing() {
+    }
+
+    @Override
+    public void addCellEditorListener(CellEditorListener cl) {
+    }
+
+    @Override
+    public void removeCellEditorListener(CellEditorListener cl) {
+    }
+    */
+  }
+
+  private class SelectionTableModel extends DefaultTableModel
+  {
+
+    @Override
+    public Class<?> getColumnClass(int columnIndex) {
+      switch(columnIndex)
+      {
+        case HOST_IDX:
+        case ATTRIBUTE_IDX:
+        case TYPE_IDX:
+          return String.class;
+        case AGGREGATE_IDX:
+          return HdbData.Aggregate.class;
+        case INTERVAL_IDX:
+          return SignalInfo.Interval.class;
+        case RECORDS_IDX:
+          return String.class;
+        case TABLE_IDX:
+        case STEP_IDX:
+        case Y1_IDX:
+        case Y2_IDX:
+        case IMG_IDX:
+          return Boolean.class;
+        default:
+          return String.class;
+      }
+    }
+
+    @Override
+    public boolean isCellEditable(int row, int column) {
+      return isEditable(row,column);
+    }
+
+    @Override
+    public void setValueAt(Object aValue, int row, int column) {
+
+      int selMode = AttributeInfo.SEL_NONE;
+      int attIdx = rowToIdx[row].attIdx;
+      boolean isW = rowToIdx[row].isWrite;
+      int item = rowToIdx[row].arrayItem;
+      boolean b;
+      switch (column) {
+        case INTERVAL_IDX:
+          SignalInfo.Interval interval = (SignalInfo.Interval)aValue;
+          SelRowItem.selected.put(attIdx, interval);
+          if(interval == SignalInfo.Interval.NONE)
+          {
+            parent.selection.get(attIdx).toggleAggregate(SignalInfo.Interval.NONE, HdbData.Aggregate.ROWS_COUNT);
+          }
+          break;
+        case AGGREGATE_IDX:
+          HdbData.Aggregate agg = (HdbData.Aggregate)aValue;
+          parent.selection.get(attIdx).toggleAggregate(SelRowItem.selected.getOrDefault(attIdx, SignalInfo.Interval.NONE), agg);
+          break;
+        case TABLE_IDX: // Table
+          b = ((Boolean) aValue).booleanValue();
+          if(item<0)
+            parent.selection.get(attIdx).table = b;
+          else
+            parent.selection.get(attIdx).arrAttInfos.get(item).table = true;
+          updateSelectionList();
+          return;
+        case STEP_IDX: // Step
+          b = ((Boolean) aValue).booleanValue();
+          if(item<0)
+            parent.selection.get(attIdx).step = b;
+          else
+            parent.selection.get(attIdx).arrAttInfos.get(item).step = true;
+          updateSelectionList();
+          return;
+        case Y1_IDX: // Y1
+          b = ((Boolean) aValue).booleanValue();
+          if(b) selMode = AttributeInfo.SEL_Y1;
+          break;
+        case Y2_IDX: // Y2
+          b = ((Boolean) aValue).booleanValue();
+          if(b) selMode = AttributeInfo.SEL_Y2;
+          break;
+        case IMG_IDX: // Image
+          b = ((Boolean) aValue).booleanValue();
+          if(b) selMode = AttributeInfo.SEL_IMAGE;
+          break;
+      }
+
+      AttributeInfo ai = parent.selection.get(attIdx);
+
+      // Array item to be expanded
+      if (item<0 &&
+          ai.isArray() &&
+         (selMode == AttributeInfo.SEL_Y1 ||
+          selMode == AttributeInfo.SEL_Y2)) {
+
+        ArrayList<Integer> expandedIDs = IDSelectionDlg.getIds(ai.maxArraySize);
+        if (expandedIDs == null) {
+          // Canceling
+          updateSelectionList();
+          return;
+        } else {
+          // Unselect old expanded (if any)
+          if(ai.isExpanded()) {
+            for(int i=0;i<ai.arrAttInfos.size();i++)
+              parent.unselectAttribute(ai, i);
+          }
+          ai.expand(expandedIDs);
+        }
+
+        updateSelectionList();
+        return;
+
+      }
+
+      if( parent.selectAttribute(ai, item, selMode, isW) ) {
+
+        // Unselect other image (if any)
+        for(AttributeInfo _ai : parent.selection) {
+          if(_ai!=ai) {
+            if(_ai.selection==AttributeInfo.SEL_IMAGE)
+              _ai.selection = AttributeInfo.SEL_NONE;
+            if(_ai.wselection==AttributeInfo.SEL_IMAGE)
+            _ai.wselection = AttributeInfo.SEL_NONE;
+          } else {
+            if(isW) {
+              if(_ai.selection==AttributeInfo.SEL_IMAGE)
+                ai.selection = AttributeInfo.SEL_NONE;
+            } else {
+              if(_ai.wselection==AttributeInfo.SEL_IMAGE)
+                ai.wselection = AttributeInfo.SEL_NONE;
+            }
+          }
+        }
+
+      }
+
+      updateSelectionList();
+
+    }
   }
 
   final MainPanel parent;
 
-  DefaultTableModel selModel;
+  SelectionTableModel selModel;
   JTable selTable;
-  JScrollPane selView;
   SelRowItem[] rowToIdx;
   String defaultScriptPath=".";
   String defaultSelFilePath=".";
@@ -147,181 +486,88 @@ public class SelectionPanel extends javax.swing.JPanel {
    * Creates new form SelectionPanel
    */
   SelectionPanel(MainPanel p) {
-    
+
     this.parent = p;
     initComponents();
-    
+
     // Create table
-    selModel = new DefaultTableModel() {
+    selModel = new SelectionTableModel();
 
-      public Class getColumnClass(int columnIndex) {
-        if (columnIndex >= 4) {
-          return Boolean.class;
-        } else {
-          return String.class;
-        }
-      }
-
-      public boolean isCellEditable(int row, int column) {
-        return isEditable(row,column);
-      }
-
-      public void setValueAt(Object aValue, int row, int column) {
-        
-        int selMode = AttributeInfo.SEL_NONE;
-        boolean b = ((Boolean) aValue).booleanValue();
-        int attIdx = rowToIdx[row].attIdx;
-        boolean isW = rowToIdx[row].isWrite;
-        int item = rowToIdx[row].arrayItem;
-
-        switch (column) {
-          
-          case 4: // Table
-            if(item<0)
-              parent.selection.get(attIdx).table = b;
-            else
-              parent.selection.get(attIdx).arrAttInfos.get(item).table = true;
-            updateSelectionList();
-            return;
-          case 5: // Step
-            if(item<0)
-              parent.selection.get(attIdx).step = b;
-            else
-              parent.selection.get(attIdx).arrAttInfos.get(item).step = true;
-            updateSelectionList();
-            return;
-          case 6: // Y1
-            if(b) selMode = AttributeInfo.SEL_Y1;
-            break;
-          case 7: // Y2
-            if(b) selMode = AttributeInfo.SEL_Y2;
-            break;
-          case 8: // Image
-            if(b) selMode = AttributeInfo.SEL_IMAGE;
-            break;
-        }
-        
-        AttributeInfo ai = parent.selection.get(attIdx);
-        
-        // Array item to be expanded
-        if (item<0 &&
-            ai.isArray() && 
-           (selMode == AttributeInfo.SEL_Y1 ||
-            selMode == AttributeInfo.SEL_Y2)) {
-
-          ArrayList<Integer> expandedIDs = IDSelectionDlg.getIds(ai.maxArraySize);
-          if (expandedIDs == null) {
-            // Canceling
-            updateSelectionList();
-            return;
-          } else {
-            // Unselect old expanded (if any)
-            if(ai.isExpanded()) {
-              for(int i=0;i<ai.arrAttInfos.size();i++)
-                parent.unselectAttribute(ai, i);
-            }
-            ai.expand(expandedIDs);
-          }
-
-          updateSelectionList();
-          return;
-
-        }
-        
-        if( parent.selectAttribute(ai, item, selMode, isW) ) {
-
-          // Unselect other image (if any)          
-          for(AttributeInfo _ai:parent.selection) {
-            if(_ai!=ai) {
-              if(_ai.selection==AttributeInfo.SEL_IMAGE)
-                _ai.selection = AttributeInfo.SEL_NONE;
-              if(_ai.wselection==AttributeInfo.SEL_IMAGE)
-              _ai.wselection = AttributeInfo.SEL_NONE;
-            } else {
-              if(isW) {
-                if(_ai.selection==AttributeInfo.SEL_IMAGE)
-                  ai.selection = AttributeInfo.SEL_NONE;
-              } else {
-                if(_ai.wselection==AttributeInfo.SEL_IMAGE)
-                  ai.wselection = AttributeInfo.SEL_NONE;
-              }
-            }
-          }
-          
-        }
-        
-        updateSelectionList();
-        
-      }
-
-    };
-    
     selTable = new JTable(selModel);
     selTable.setDefaultRenderer(Boolean.class, new BooleanCellRenderer());
+    EnumListCell aggRender = new EnumListCell();
+    selTable.setDefaultRenderer(SignalInfo.Interval.class, aggRender);
+    selTable.setDefaultEditor(SignalInfo.Interval.class, aggRender);
+    selTable.setDefaultRenderer(HdbData.Aggregate.class, aggRender);
+    selTable.setDefaultEditor(HdbData.Aggregate.class, aggRender);
     JScrollPane selView = new JScrollPane(selTable);
     selView.setPreferredSize(new Dimension(600,100));
     listPanel.add(selView, BorderLayout.CENTER);
-        
+
     updateSelectionList();
-    
+
     // Got default path from database
     try {
-      
+
       Database db = ApiUtil.get_db_obj();
-      
+
       DbDatum ds = db.get_property("HDBViewer","scriptPath");
       if(!ds.is_empty()) defaultScriptPath = ds.extractString();
 
       DbDatum df = db.get_property("HDBViewer","selFilePath");
       if(!df.is_empty()) defaultSelFilePath = df.extractString();
-      
+
     } catch(DevFailed e) {
-      
+
     }
-    
-        
+
   }
-  
-  
+
   boolean isEditable(int row,int column) {
-    
-    if(column<4)
-      return false;
+    if(column == INTERVAL_IDX)
+      return true;
 
     int attIdx = rowToIdx[row].attIdx;
+
+    if(column == AGGREGATE_IDX)
+      return SelRowItem.selected.get(attIdx) != SignalInfo.Interval.NONE;
+
+    if(column<TABLE_IDX)
+      return false;
+
     int item = rowToIdx[row].arrayItem;
     AttributeInfo ai = parent.selection.get(attIdx);
-    
-    if(column==4) {
+
+    if(column==TABLE_IDX) {
       // Table
       return true;
     }
-    
-    if(column==5) {
+
+    if(column==STEP_IDX) {
       // Step
       return (item>=0) ||
              (ai.isNumeric() && !ai.isArray());
     }
-    
-    if(column==6 || column==7) {
+
+    if(column==Y1_IDX || column==Y2_IDX) {
       // Y1, Y2
       return ai.isNumeric();
     }
-    
-    if(column==8) {
+
+    if(column==IMG_IDX) {
       // Image
       return item==-1 && ai.isNumeric() && ai.isArray();
     }
-    
+
     return false;
-    
+
   }
-    
-  String getPyScript() {    
+
+  String getPyScript() {
     return scriptText.getText();
   }
 
-  void setPyScript(String name) {    
+  void setPyScript(String name) {
     scriptText.setText(name);
   }
 
@@ -451,14 +697,14 @@ public class SelectionPanel extends javax.swing.JPanel {
 
     add(btnPanel, java.awt.BorderLayout.SOUTH);
   }// </editor-fold>//GEN-END:initComponents
- 
+
   void updateSelectionList() {
-    
+
     int nbAtt = 0;
     for (int i = 0; i < parent.selection.size(); i++) {
 
       AttributeInfo ai = parent.selection.get(i);
-      
+
       if(ai.isExpanded()) {
 
         // Expanded array attribute
@@ -466,114 +712,119 @@ public class SelectionPanel extends javax.swing.JPanel {
           nbAtt += 2*(1+ai.arrAttInfos.size());
         else
           nbAtt += 1+ai.arrAttInfos.size();
-        
+
       } else {
-        
+
         if(ai.isRW())
           nbAtt+=2;
         else
-          nbAtt+=1;      
-        
+          nbAtt+=1;
+
       }
-      
+
     }
 
     int j=0;
-    Object[][] objs = new Object[nbAtt][9];
+    Object[][] objs = new Object[nbAtt][colNames.length];
     rowToIdx = new SelRowItem[nbAtt];
 
     for (int i = 0; i < parent.selection.size(); i++) {
-      
+
       AttributeInfo ai = parent.selection.get(i);
-      
-      objs[j][0] = ai.host;
-      objs[j][1] = ai.getName();
-      objs[j][2] = ai.getType();
-      objs[j][3] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
-      objs[j][4] = ai.table;        
-      objs[j][5] = ai.step;        
-      objs[j][6] = (ai.selection == AttributeInfo.SEL_Y1);
-      objs[j][7] = (ai.selection == AttributeInfo.SEL_Y2);
-      objs[j][8] = (ai.selection == AttributeInfo.SEL_IMAGE);
+
+      SignalInfo.Interval interval = SelRowItem.selected.getOrDefault(i, SignalInfo.Interval.NONE);
+      int dataSize = ai.getDataSize(interval);
+      int errorSize = ai.getErrorSize(interval);
+              
+              
+      objs[j][HOST_IDX] = ai.host;
+      objs[j][ATTRIBUTE_IDX] = ai.getName();
+      objs[j][TYPE_IDX] = ai.getType();
+      objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
+      objs[j][TABLE_IDX] = ai.table;
+      objs[j][STEP_IDX] = ai.step;
+      objs[j][Y1_IDX] = (ai.selection == AttributeInfo.SEL_Y1);
+      objs[j][Y2_IDX] = (ai.selection == AttributeInfo.SEL_Y2);
+      objs[j][IMG_IDX] = (ai.selection == AttributeInfo.SEL_IMAGE);
       rowToIdx[j] = new SelRowItem(i,false,-1);
       j++;
-      
+
       if (ai.isExpanded()) {
         int k = 0;
         for (ArrayAttributeInfo aai : ai.arrAttInfos) {
-          objs[j][0] = ai.host;
-          objs[j][1] = ai.getName() + "[" + aai.idx + "]";
-          objs[j][2] = "Item #" + aai.idx;
-          objs[j][3] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
-          objs[j][4] = aai.table;
-          objs[j][5] = aai.step;
-          objs[j][6] = (aai.selection == AttributeInfo.SEL_Y1);
-          objs[j][7] = (aai.selection == AttributeInfo.SEL_Y2);
-          objs[j][8] = (aai.selection == AttributeInfo.SEL_IMAGE);
+          objs[j][HOST_IDX] = ai.host;
+          objs[j][ATTRIBUTE_IDX] = ai.getName() + "[" + aai.idx + "]";
+          objs[j][TYPE_IDX] = "Item #" + aai.idx;
+          objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
+          objs[j][TABLE_IDX] = aai.table;
+          objs[j][STEP_IDX] = aai.step;
+          objs[j][Y1_IDX] = (aai.selection == AttributeInfo.SEL_Y1);
+          objs[j][Y2_IDX] = (aai.selection == AttributeInfo.SEL_Y2);
+          objs[j][IMG_IDX] = (aai.selection == AttributeInfo.SEL_IMAGE);
           rowToIdx[j] = new SelRowItem(i, false, k);
           j++;
           k++;
         }
       }
-        
+
       if(ai.isRW()) {
-        
-        objs[j][0] = ai.host;
-        objs[j][1] = ai.getName()+"_w";
-        objs[j][2] = ai.getType();
-        objs[j][3] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
-        objs[j][4] = ai.table;        
-        objs[j][5] = ai.step;        
-        objs[j][6] = (ai.wselection == AttributeInfo.SEL_Y1);
-        objs[j][7] = (ai.wselection == AttributeInfo.SEL_Y2);
-        objs[j][8] = (ai.wselection == AttributeInfo.SEL_IMAGE);
+
+        objs[j][HOST_IDX] = ai.host;
+        objs[j][ATTRIBUTE_IDX] = ai.getName()+"_w";
+        objs[j][TYPE_IDX] = ai.getType();
+        objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
+        objs[j][TABLE_IDX] = ai.table;
+        objs[j][STEP_IDX] = ai.step;
+        objs[j][Y1_IDX] = (ai.wselection == AttributeInfo.SEL_Y1);
+        objs[j][Y2_IDX] = (ai.wselection == AttributeInfo.SEL_Y2);
+        objs[j][IMG_IDX] = (ai.wselection == AttributeInfo.SEL_IMAGE);
         rowToIdx[j] = new SelRowItem(i,true,-1);
         j++;
-        
+
         if (ai.isExpanded()) {
           int k = 0;
           for (ArrayAttributeInfo aai : ai.arrAttInfos) {
-            objs[j][0] = ai.host;
-            objs[j][1] = ai.getName() + "_w[" + aai.idx + "]";
-            objs[j][2] = "Write item #" + aai.idx;
-            objs[j][3] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
-            objs[j][4] = aai.table;
-            objs[j][5] = aai.step;
-            objs[j][6] = (aai.wselection == AttributeInfo.SEL_Y1);
-            objs[j][7] = (aai.wselection == AttributeInfo.SEL_Y2);
-            objs[j][8] = (aai.wselection == AttributeInfo.SEL_IMAGE);
+            objs[j][HOST_IDX] = ai.host;
+            objs[j][ATTRIBUTE_IDX] = ai.getName() + "_w[" + aai.idx + "]";
+            objs[j][TYPE_IDX] = "Write item #" + aai.idx;
+            objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
+            objs[j][TABLE_IDX] = aai.table;
+            objs[j][STEP_IDX] = aai.step;
+            objs[j][Y1_IDX] = (aai.wselection == AttributeInfo.SEL_Y1);
+            objs[j][Y2_IDX] = (aai.wselection == AttributeInfo.SEL_Y2);
+            objs[j][IMG_IDX] = (aai.wselection == AttributeInfo.SEL_IMAGE);
             rowToIdx[j] = new SelRowItem(i, true, k);
             j++;
             k++;
           }
         }
-        
+
       }
-      
+
     }
 
     selModel.setDataVector(objs, colNames);
-    selTable.getColumnModel().getColumn(1).setPreferredWidth(350);
-    selTable.getColumnModel().getColumn(3).setMinWidth(100);
-    selTable.getColumnModel().getColumn(4).setMaxWidth(60);
-    selTable.getColumnModel().getColumn(5).setMaxWidth(60);
-    selTable.getColumnModel().getColumn(6).setMaxWidth(60);
-    selTable.getColumnModel().getColumn(7).setMaxWidth(60);
-    selTable.getColumnModel().getColumn(8).setMaxWidth(60);
-      
+    selTable.getColumnModel().getColumn(ATTRIBUTE_IDX).setPreferredWidth(350);
+    selTable.getColumnModel().getColumn(RECORDS_IDX).setMinWidth(100);
+    selTable.getColumnModel().getColumn(TABLE_IDX).setMaxWidth(60);
+    selTable.getColumnModel().getColumn(STEP_IDX).setMaxWidth(60);
+    selTable.getColumnModel().getColumn(Y1_IDX).setMaxWidth(60);
+    selTable.getColumnModel().getColumn(Y2_IDX).setMaxWidth(60);
+    selTable.getColumnModel().getColumn(IMG_IDX).setMaxWidth(60);
+
   }
-  
+
   private void removeID(String id) {
-    
+
     boolean found = false;
     int i=0;
     while(!found && i<parent.selection.size()) {
       found = parent.selection.get(i).sigInfo.sigId == id;
       if(!found) i++;
     }
-    
+
     if(found) {
-      AttributeInfo ai = parent.selection.get(i);      
+      AttributeInfo ai = parent.selection.get(i);
       parent.unselectAttribute(ai,-1);
       if(ai.isExpanded()) {
         for(int j=0;j<ai.arrAttInfos.size();j++)
@@ -581,84 +832,84 @@ public class SelectionPanel extends javax.swing.JPanel {
       }
       parent.selection.remove(i);
     }
-    
+
   }
 
   private void removeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeButtonActionPerformed
 
     int[] rows = selTable.getSelectedRows();
-    ArrayList<String> ids = new ArrayList<String>();
-    
+    ArrayList<String> ids = new ArrayList<>();
+
     // List of ids to remove
     for(int i=0;i<rows.length;i++) {
       int attIdx = rowToIdx[rows[i]].attIdx;
       String id = parent.selection.get(attIdx).sigInfo.sigId;
       if(!ids.contains(id)) ids.add(id);
     }
-    
+
     for(int i=0;i<ids.size();i++)
       removeID(ids.get(i));
-    
+
     updateSelectionList();
-    
+
   }//GEN-LAST:event_removeButtonActionPerformed
 
   void loadFile(String fileName) {
-    
+
        try {
 
         // Load the config file
         ConfigFileReader cf = new ConfigFileReader(new FileReader(fileName));
         ArrayList<AttributeInfo> list = cf.parseFile();
-        
+
         // Update type info
         for(int i=0;i<list.size();i++) {
-          HdbSigInfo si = parent.hdb.getReader().getSigInfo(list.get(i).getFullName());
+          SignalInfo si = parent.hdb.getReader().getSigInfo(list.get(i).getFullName(), HdbSigParam.QUERY_DATA);
           list.get(i).sigInfo = si;
         }
-        
+
         // Update list
         parent.reset();
         parent.selection = list;
-        updateSelectionList();        
-        
+        updateSelectionList();
+
         // Update global
         parent.chartPanel.setShowError(cf.showError);
         if(cf.chartSettings!=null) {
           CfFileReader cfr = new CfFileReader();
           cfr.parseText(cf.chartSettings);
-          parent.chartPanel.chart.applyConfiguration(cfr);          
+          parent.chartPanel.chart.applyConfiguration(cfr);
         }
         if(cf.xSettings!=null) {
           CfFileReader cfr = new CfFileReader();
           cfr.parseText(cf.xSettings);
-          parent.chartPanel.chart.getXAxis().applyConfiguration("x",cfr);                    
+          parent.chartPanel.chart.getXAxis().applyConfiguration("x",cfr);
         }
         if(cf.y1Settings!=null) {
           CfFileReader cfr = new CfFileReader();
           cfr.parseText(cf.y1Settings);
-          parent.chartPanel.chart.getY1Axis().applyConfiguration("y1",cfr);                    
+          parent.chartPanel.chart.getY1Axis().applyConfiguration("y1",cfr);
         }
         if(cf.y2Settings!=null) {
           CfFileReader cfr = new CfFileReader();
           cfr.parseText(cf.y2Settings);
-          parent.chartPanel.chart.getY2Axis().applyConfiguration("y2",cfr);                    
+          parent.chartPanel.chart.getY2Axis().applyConfiguration("y2",cfr);
         }
         parent.hdbTreePanel.setTimeInterval(cf.timeInterval);
         parent.hdbTreePanel.hdbModeCombo.setSelectedIndex(cf.hdbMode);
-        scriptText.setText(cf.scriptName);        
-        
+        scriptText.setText(cf.scriptName);
+
       } catch(IOException e) {
         Utils.showError("Cannot load file\n"+e.getMessage());
       } catch(HdbFailed e2) {
-        Utils.showError("Cannot load file\n"+e2.getMessage());      
+        Utils.showError("Cannot load file\n"+e2.getMessage());
       }
-   
+
   }
-  
+
   private void removeAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAllButtonActionPerformed
     parent.selection.clear();
-    updateSelectionList();    
+    updateSelectionList();
   }//GEN-LAST:event_removeAllButtonActionPerformed
 
   private void loadButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadButtonActionPerformed
@@ -678,7 +929,7 @@ public class SelectionPanel extends javax.swing.JPanel {
       defaultSelFilePath = chooser.getSelectedFile().getPath();
     }
 
-    
+
   }//GEN-LAST:event_loadButtonActionPerformed
 
   private void saveButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveButtonActionPerformed
@@ -690,13 +941,13 @@ public class SelectionPanel extends javax.swing.JPanel {
     saveChartSettings = new JCheckBox("Save chart settings");
     GridBagConstraints gbc = new GridBagConstraints();
     aPanel.add(saveChartSettings,gbc);
-    
-    JFileChooser chooser;    
+
+    JFileChooser chooser;
     File f = new File(defaultSelFilePath);
     if(f.exists())
      chooser = new JFileChooser(defaultSelFilePath);
     else
-     chooser = new JFileChooser(".");    
+     chooser = new JFileChooser(".");
     chooser.setAccessory(aPanel);
     String[] exts={"hdb"};
     HDBFileFilter filter = new HDBFileFilter("HDB selection file",exts);

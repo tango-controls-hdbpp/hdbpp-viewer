@@ -15,8 +15,8 @@ public class HostAlias {
   
   private HostAlias() {
     
-    hosts = new ArrayList<String>();
-    alias = new ArrayList<String>();
+    hosts = new ArrayList<>();
+    alias = new ArrayList<>();
     
     try {
       
@@ -25,15 +25,15 @@ public class HostAlias {
       if(!datum.is_empty()) {
         
         String[] aliases = datum.extractStringArray();
-        for(int i=0;i<aliases.length;i++) {
-          int idx = aliases[i].indexOf(',');
-          if(idx!=-1) {            
-            String hName = aliases[i].substring(0,idx);
-            String aName = aliases[i].substring(idx+1,aliases[i].length());
+        for (String aliase : aliases) {
+          int idx = aliase.indexOf(',');
+          if (idx!=-1) {
+            String hName = aliase.substring(0, idx);
+            String aName = aliase.substring(idx+1, aliase.length());
             hosts.add(hName);
-            alias.add(aName);            
+            alias.add(aName);
           } else {
-            System.out.println("HostAlias() wrong syntax :" + aliases[i]);
+            System.out.println("HostAlias() wrong syntax :" + aliase);
           }
         }
                 
