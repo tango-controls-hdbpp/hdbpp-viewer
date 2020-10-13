@@ -323,6 +323,7 @@ public class AttributeInfo {
     {
       chartData[idx] = new JLDataView();
       chartData[idx].setColor(c);
+      chartData[idx].setMarkerColor(c);
       chartData[idx].setUnit(unit);
     }
     if(dataViewSettings[idx] != null)
@@ -364,6 +365,7 @@ public class AttributeInfo {
       if (a.dv == null) {
         a.dv = new JLDataView();
         a.dv.setColor(c);
+        a.dv.setMarkerColor(c);
         a.dv.setUnit(getUnit(agg));
         if(a.dvSettings != null) {
           CfFileReader cfr = new CfFileReader();

@@ -610,6 +610,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     if(aai.chartData==null) {
       aai.chartData = new JLDataView();
       aai.chartData.setColor(c);
+      aai.chartData.setMarkerColor(c);
       aai.chartData.setUnit(ai.unit);
     }
 
