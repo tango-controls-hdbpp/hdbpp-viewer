@@ -5,7 +5,7 @@
 
     <groupId>org.tango</groupId>
     <artifactId>jhdbviewer</artifactId>
-    <version>1.20-SNAPSHOT</version>
+    <version>1.21-SNAPSHOT</version>
 
     <packaging>jar</packaging>
 
