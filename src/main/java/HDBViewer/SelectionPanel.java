@@ -84,62 +84,19 @@ public class SelectionPanel extends javax.swing.JPanel {
       attIdx = idx;
       isWrite = write;
       this.arrayItem = arrayItem;
-      if(!selected.containsKey(idx))
-      {
-        selected.put(idx, SignalInfo.Interval.NONE);
-      }
+      this.aggregate = null;      
+    }
+    SelRowItem(int idx,boolean write,int arrayItem,HdbData.Aggregate aggregate) {
+      attIdx = idx;
+      isWrite = write;
+      this.arrayItem = arrayItem;
+      this.aggregate = aggregate;
     }
     int attIdx;
     int arrayItem;
     boolean isWrite;
-    static Map<Integer, SignalInfo.Interval> selected;
-    static
-    {
-      selected = new HashMap<>();
-    }
-  }
-
-  private static class JComboCheckBox extends JComboBox<Enum<?>> {
-
-    private Set<? extends Enum<?>> selection;
-
-    JComboCheckBox(Enum<?>[] items)
-    {
-      super(items);
-      setRenderer(new ComboBoxRenderer());
-    }
-
-    private void select(Set<? extends Enum<?>> selected)
-    {
-      selection = selected;
-    }
-
-    class ComboBoxRenderer implements ListCellRenderer<Enum<?>> {
-      JCheckBox cb = new JCheckBox();
-      JLabel label = new JLabel();
-      public ComboBoxRenderer()
-      {
-        setOpaque(true);
-      }
-
-      @Override
-      public Component getListCellRendererComponent(JList<? extends Enum<?>> list, Enum<?> value, int index,
-                  boolean isSelected, boolean cellHasFocus) {
-        Component ret;
-        switch(index)
-        {
-          case -1:
-            label.setText(value.toString());
-            ret = label;
-            break;
-          default:
-            cb.setText(value.toString());
-            cb.setSelected(selection.contains(value));
-            ret = cb;
-        }
-        return ret;
-      }
-    }
+    HdbData.Aggregate aggregate;
+    
   }
 
   private final static Color backColor = new Color(240,240,255);
@@ -199,143 +156,6 @@ public class SelectionPanel extends javax.swing.JPanel {
     }
   }
 
-  class EnumListCell extends DefaultCellEditor implements TableCellRenderer {
-    JLabel label = new JLabel("");
-    JComboCheckBox aggCombo = new JComboCheckBox(HdbData.Aggregate.values());
-    JComboCheckBox intervalCombo = new JComboCheckBox(SignalInfo.Interval.values());
-    JComboCheckBox ret;
-
-    EnumListCell()
-    {
-      super(new JComboBox<>());
-      aggCombo.addActionListener(new ActionListener()
-              {
-        @Override
-        public void actionPerformed(ActionEvent ae) {
-          stopEditing();
-        }
-
-              });
-        intervalCombo.addActionListener(new ActionListener()
-                {
-          @Override
-          public void actionPerformed(ActionEvent ae) {
-            stopEditing();
-          }
-
-                });
-    }
-
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value,
-         boolean isSelected, boolean hasFocus, int row, int column) {
-      int attIdx = rowToIdx[row].attIdx;
-      AttributeInfo ai = parent.selection.get(attIdx);
-      if(column == INTERVAL_IDX)
-      {
-        label.setText(SelRowItem.selected.getOrDefault(attIdx, SignalInfo.Interval.NONE).toString());
-      }
-      if(column == AGGREGATE_IDX)
-      {
-        Set<HdbData.Aggregate> aggregates = ai.getAggregates(SelRowItem.selected.get(attIdx));
-        switch(aggregates.size())
-        {
-          case 0:
-            label.setText("No selection");
-            break;
-          case 1:
-            label.setText(aggregates.iterator().next().toString());
-            break;
-          default:
-            label.setText("Multi...");
-        }
-      }
-      if(column >= Y1_IDX)
-        label.setBackground(backColor);
-      else
-        label.setBackground(Color.WHITE);
-      return label;
-    }
-
-    @Override
-    public Component getTableCellEditorComponent(JTable jtable, Object o, boolean bln, int row, int col)
-    {
-      int attIdx = rowToIdx[row].attIdx;
-      AttributeInfo ai = parent.selection.get(attIdx);
-      if(col == INTERVAL_IDX)
-      {
-        Set<SignalInfo.Interval> intervals = ai.getIntervals();
-        intervalCombo.select(intervals);
-        ret = intervalCombo;
-      }
-      if(col == AGGREGATE_IDX)
-      {
-        Set<HdbData.Aggregate> aggregates = ai.getAggregates(SelRowItem.selected.get(attIdx));
-        aggCombo.select(aggregates);
-        ret = aggCombo;
-      }
-      return ret;
-    }
-
-    @Override
-    public Object getCellEditorValue() {
-      return ret.getSelectedItem();
-    }
-/*
-    @Override
-    public boolean isCellEditable(EventObject eo) {
-      Object source = eo.getSource();
-      if(source instanceof JTable)
-      {
-        JTable table = (JTable)source;
-        int test = table.getEditingColumn();
-        int testr = table.getEditingRow();
-
-        Component testc = table.get;
-
-        int column = table.getSelectedColumn();
-        int row = table.getSelectedRow();
-        if(column == INTERVAL_IDX)
-          return true;
-
-        int attIdx = rowToIdx[row].attIdx;
-
-        if(column == AGGREGATE_IDX)
-          return SelRowItem.selected.get(attIdx) != SignalInfo.Interval.NONE;
-      }
-      return true;
-    }
-
-    @Override
-    public boolean shouldSelectCell(EventObject eo) {
-      return !combo.isPopupVisible();
-    }
-*/
-    private boolean stopEditing()
-    {
-      return super.stopCellEditing();
-    }
-
-    @Override
-    public boolean stopCellEditing() {
-      cancelCellEditing();
-      return true;
-    }
-/*
-    @Override
-    public void cancelCellEditing() {
-    }
-
-    @Override
-    public void addCellEditorListener(CellEditorListener cl) {
-    }
-
-    @Override
-    public void removeCellEditorListener(CellEditorListener cl) {
-    }
-    */
-  }
-
   private class SelectionTableModel extends DefaultTableModel
   {
 
@@ -376,34 +196,34 @@ public class SelectionPanel extends javax.swing.JPanel {
       int attIdx = rowToIdx[row].attIdx;
       boolean isW = rowToIdx[row].isWrite;
       int item = rowToIdx[row].arrayItem;
+      HdbData.Aggregate agg = rowToIdx[row].aggregate;
+      AttributeInfo ai = parent.selection.get(attIdx);
+      
       boolean b;
       switch (column) {
-        case INTERVAL_IDX:
-          SignalInfo.Interval interval = (SignalInfo.Interval)aValue;
-          SelRowItem.selected.put(attIdx, interval);
-          if(interval == SignalInfo.Interval.NONE)
-          {
-            parent.selection.get(attIdx).toggleAggregate(SignalInfo.Interval.NONE, HdbData.Aggregate.ROWS_COUNT);
-          }
-          break;
-        case AGGREGATE_IDX:
-          HdbData.Aggregate agg = (HdbData.Aggregate)aValue;
-          parent.selection.get(attIdx).toggleAggregate(SelRowItem.selected.getOrDefault(attIdx, SignalInfo.Interval.NONE), agg);
-          break;
         case TABLE_IDX: // Table
           b = ((Boolean) aValue).booleanValue();
-          if(item<0)
-            parent.selection.get(attIdx).table = b;
-          else
-            parent.selection.get(attIdx).arrAttInfos.get(item).table = true;
+          if(ai.isRAW()) {
+            if(item<0)
+              ai.table = b;
+            else
+              ai.arrAttInfos.get(item).table = true;
+          } else {
+            ai.getAggregate(agg).table = b;
+          }
           updateSelectionList();
           return;
         case STEP_IDX: // Step
           b = ((Boolean) aValue).booleanValue();
-          if(item<0)
-            parent.selection.get(attIdx).step = b;
-          else
-            parent.selection.get(attIdx).arrAttInfos.get(item).step = true;
+          if (ai.isRAW()) {
+            if (item < 0) {
+              ai.step = b;
+            } else {
+              ai.arrAttInfos.get(item).step = true;
+            }
+          } else {
+            ai.getAggregate(agg).step = b;
+          }
           updateSelectionList();
           return;
         case Y1_IDX: // Y1
@@ -419,8 +239,6 @@ public class SelectionPanel extends javax.swing.JPanel {
           if(b) selMode = AttributeInfo.SEL_IMAGE;
           break;
       }
-
-      AttributeInfo ai = parent.selection.get(attIdx);
 
       // Array item to be expanded
       if (item<0 &&
@@ -447,7 +265,7 @@ public class SelectionPanel extends javax.swing.JPanel {
 
       }
 
-      if( parent.selectAttribute(ai, item, selMode, isW) ) {
+      if( parent.selectAttribute(ai, item, agg, selMode, isW) ) {
 
         // Unselect other image (if any)
         for(AttributeInfo _ai : parent.selection) {
@@ -495,13 +313,8 @@ public class SelectionPanel extends javax.swing.JPanel {
 
     selTable = new JTable(selModel);
     selTable.setDefaultRenderer(Boolean.class, new BooleanCellRenderer());
-    EnumListCell aggRender = new EnumListCell();
-    selTable.setDefaultRenderer(SignalInfo.Interval.class, aggRender);
-    selTable.setDefaultEditor(SignalInfo.Interval.class, aggRender);
-    selTable.setDefaultRenderer(HdbData.Aggregate.class, aggRender);
-    selTable.setDefaultEditor(HdbData.Aggregate.class, aggRender);
     JScrollPane selView = new JScrollPane(selTable);
-    selView.setPreferredSize(new Dimension(600,100));
+    selView.setPreferredSize(new Dimension(1200,100));
     listPanel.add(selView, BorderLayout.CENTER);
 
     updateSelectionList();
@@ -530,7 +343,7 @@ public class SelectionPanel extends javax.swing.JPanel {
     int attIdx = rowToIdx[row].attIdx;
 
     if(column == AGGREGATE_IDX)
-      return SelRowItem.selected.get(attIdx) != SignalInfo.Interval.NONE;
+      return false;
 
     if(column<TABLE_IDX)
       return false;
@@ -715,10 +528,14 @@ public class SelectionPanel extends javax.swing.JPanel {
 
       } else {
 
-        if(ai.isRW())
-          nbAtt+=2;
-        else
-          nbAtt+=1;
+        if(ai.isAggregate()) {
+          nbAtt+=ai.getNbAggregate();
+        } else {
+          if(ai.isRW())
+            nbAtt+=2;
+          else
+            nbAtt+=1;
+        }
 
       }
 
@@ -732,80 +549,111 @@ public class SelectionPanel extends javax.swing.JPanel {
 
       AttributeInfo ai = parent.selection.get(i);
 
-      SignalInfo.Interval interval = SelRowItem.selected.getOrDefault(i, SignalInfo.Interval.NONE);
-      int dataSize = ai.getDataSize(interval);
-      int errorSize = ai.getErrorSize(interval);
-              
-              
-      objs[j][HOST_IDX] = ai.host;
-      objs[j][ATTRIBUTE_IDX] = ai.getName();
-      objs[j][TYPE_IDX] = ai.getType();
-      objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
-      objs[j][TABLE_IDX] = ai.table;
-      objs[j][STEP_IDX] = ai.step;
-      objs[j][Y1_IDX] = (ai.selection == AttributeInfo.SEL_Y1);
-      objs[j][Y2_IDX] = (ai.selection == AttributeInfo.SEL_Y2);
-      objs[j][IMG_IDX] = (ai.selection == AttributeInfo.SEL_IMAGE);
-      rowToIdx[j] = new SelRowItem(i,false,-1);
-      j++;
+      if (ai.isAggregate()) {
 
-      if (ai.isExpanded()) {
-        int k = 0;
-        for (ArrayAttributeInfo aai : ai.arrAttInfos) {
+        for (HdbData.Aggregate agg : ai.getAggregates()) {
+
           objs[j][HOST_IDX] = ai.host;
-          objs[j][ATTRIBUTE_IDX] = ai.getName() + "[" + aai.idx + "]";
-          objs[j][TYPE_IDX] = "Item #" + aai.idx;
-          objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
-          objs[j][TABLE_IDX] = aai.table;
-          objs[j][STEP_IDX] = aai.step;
-          objs[j][Y1_IDX] = (aai.selection == AttributeInfo.SEL_Y1);
-          objs[j][Y2_IDX] = (aai.selection == AttributeInfo.SEL_Y2);
-          objs[j][IMG_IDX] = (aai.selection == AttributeInfo.SEL_IMAGE);
-          rowToIdx[j] = new SelRowItem(i, false, k);
+          objs[j][ATTRIBUTE_IDX] = ai.getName();
+          objs[j][TYPE_IDX] = ai.getType();
+          objs[j][INTERVAL_IDX] = ai.interval;
+          objs[j][AGGREGATE_IDX] = agg;
+          objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+          objs[j][TABLE_IDX] = ai.getAggregate(agg).table;
+          objs[j][STEP_IDX] = ai.getAggregate(agg).step;
+          objs[j][Y1_IDX] = (ai.getAggregate(agg).selection == AttributeInfo.SEL_Y1);
+          objs[j][Y2_IDX] = (ai.getAggregate(agg).selection == AttributeInfo.SEL_Y2);
+          objs[j][IMG_IDX] = (ai.getAggregate(agg).selection == AttributeInfo.SEL_IMAGE);
+          rowToIdx[j] = new SelRowItem(i, false, -1, agg);
           j++;
-          k++;
-        }
-      }
 
-      if(ai.isRW()) {
+        }
+
+      } else {
 
         objs[j][HOST_IDX] = ai.host;
-        objs[j][ATTRIBUTE_IDX] = ai.getName()+"_w";
+        objs[j][ATTRIBUTE_IDX] = ai.getName();
         objs[j][TYPE_IDX] = ai.getType();
-        objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
+        objs[j][INTERVAL_IDX] = ai.interval;
+        objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
         objs[j][TABLE_IDX] = ai.table;
         objs[j][STEP_IDX] = ai.step;
-        objs[j][Y1_IDX] = (ai.wselection == AttributeInfo.SEL_Y1);
-        objs[j][Y2_IDX] = (ai.wselection == AttributeInfo.SEL_Y2);
-        objs[j][IMG_IDX] = (ai.wselection == AttributeInfo.SEL_IMAGE);
-        rowToIdx[j] = new SelRowItem(i,true,-1);
+        objs[j][Y1_IDX] = (ai.selection == AttributeInfo.SEL_Y1);
+        objs[j][Y2_IDX] = (ai.selection == AttributeInfo.SEL_Y2);
+        objs[j][IMG_IDX] = (ai.selection == AttributeInfo.SEL_IMAGE);
+        rowToIdx[j] = new SelRowItem(i, false, -1);
         j++;
 
         if (ai.isExpanded()) {
           int k = 0;
           for (ArrayAttributeInfo aai : ai.arrAttInfos) {
             objs[j][HOST_IDX] = ai.host;
-            objs[j][ATTRIBUTE_IDX] = ai.getName() + "_w[" + aai.idx + "]";
-            objs[j][TYPE_IDX] = "Write item #" + aai.idx;
-            objs[j][RECORDS_IDX] = Integer.toString(dataSize) + " (Err=" + Integer.toString(errorSize) + ")";
+            objs[j][ATTRIBUTE_IDX] = ai.getName() + "[" + aai.idx + "]";
+            objs[j][TYPE_IDX] = "Item #" + aai.idx;
+            objs[j][INTERVAL_IDX] = ai.interval;
+            objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
             objs[j][TABLE_IDX] = aai.table;
             objs[j][STEP_IDX] = aai.step;
-            objs[j][Y1_IDX] = (aai.wselection == AttributeInfo.SEL_Y1);
-            objs[j][Y2_IDX] = (aai.wselection == AttributeInfo.SEL_Y2);
-            objs[j][IMG_IDX] = (aai.wselection == AttributeInfo.SEL_IMAGE);
-            rowToIdx[j] = new SelRowItem(i, true, k);
+            objs[j][Y1_IDX] = (aai.selection == AttributeInfo.SEL_Y1);
+            objs[j][Y2_IDX] = (aai.selection == AttributeInfo.SEL_Y2);
+            objs[j][IMG_IDX] = (aai.selection == AttributeInfo.SEL_IMAGE);
+            rowToIdx[j] = new SelRowItem(i, false, k);
             j++;
             k++;
           }
         }
 
+        if (ai.isRW()) {
+
+          objs[j][HOST_IDX] = ai.host;
+          objs[j][ATTRIBUTE_IDX] = ai.getName() + "_w";
+          objs[j][TYPE_IDX] = ai.getType();
+          objs[j][INTERVAL_IDX] = ai.interval;
+          objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+          objs[j][TABLE_IDX] = ai.table;
+          objs[j][STEP_IDX] = ai.step;
+          objs[j][Y1_IDX] = (ai.wselection == AttributeInfo.SEL_Y1);
+          objs[j][Y2_IDX] = (ai.wselection == AttributeInfo.SEL_Y2);
+          objs[j][IMG_IDX] = (ai.wselection == AttributeInfo.SEL_IMAGE);
+          rowToIdx[j] = new SelRowItem(i, true, -1);
+          j++;
+
+          if (ai.isExpanded()) {
+            int k = 0;
+            for (ArrayAttributeInfo aai : ai.arrAttInfos) {
+              objs[j][HOST_IDX] = ai.host;
+              objs[j][ATTRIBUTE_IDX] = ai.getName() + "_w[" + aai.idx + "]";
+              objs[j][TYPE_IDX] = "Write item #" + aai.idx;
+              objs[j][INTERVAL_IDX] = ai.interval;
+              objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+              objs[j][TABLE_IDX] = aai.table;
+              objs[j][STEP_IDX] = aai.step;
+              objs[j][Y1_IDX] = (aai.wselection == AttributeInfo.SEL_Y1);
+              objs[j][Y2_IDX] = (aai.wselection == AttributeInfo.SEL_Y2);
+              objs[j][IMG_IDX] = (aai.wselection == AttributeInfo.SEL_IMAGE);
+              rowToIdx[j] = new SelRowItem(i, true, k);
+              j++;
+              k++;
+            }
+          }
+
+        }
+
       }
 
     }
-
+    
+    selTable.setRowHeight(20);
     selModel.setDataVector(objs, colNames);
-    selTable.getColumnModel().getColumn(ATTRIBUTE_IDX).setPreferredWidth(350);
+    selTable.getColumnModel().getColumn(ATTRIBUTE_IDX).setPreferredWidth(300);
+    selTable.getColumnModel().getColumn(TYPE_IDX).setMinWidth(120);
+    selTable.getColumnModel().getColumn(TYPE_IDX).setMaxWidth(120);
+    selTable.getColumnModel().getColumn(INTERVAL_IDX).setMinWidth(80);
+    selTable.getColumnModel().getColumn(INTERVAL_IDX).setMaxWidth(80);
+    selTable.getColumnModel().getColumn(INTERVAL_IDX).setMinWidth(80);
+    selTable.getColumnModel().getColumn(AGGREGATE_IDX).setMaxWidth(80);
     selTable.getColumnModel().getColumn(RECORDS_IDX).setMinWidth(100);
+    selTable.getColumnModel().getColumn(RECORDS_IDX).setPreferredWidth(100);
     selTable.getColumnModel().getColumn(TABLE_IDX).setMaxWidth(60);
     selTable.getColumnModel().getColumn(STEP_IDX).setMaxWidth(60);
     selTable.getColumnModel().getColumn(Y1_IDX).setMaxWidth(60);

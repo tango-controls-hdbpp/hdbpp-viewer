@@ -17,6 +17,7 @@ import javax.swing.tree.TreePath;
 import org.tango.jhdb.HdbFailed;
 import org.tango.jhdb.HdbReader;
 import org.tango.jhdb.HdbSigInfo;
+import org.tango.jhdb.SignalInfo;
 
 /**
  *
@@ -151,27 +152,42 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
 
       // Add to query list
       for(int i=0;i<list.size();i++) {
+        
         AttributeInfo ai = list.get(i);
+        
         if(!AttributeInfo.isInList(ai, parent.selection)) {
 
-          if(ai.isString())
-            ai.table = true;
+          if( ai.isArray() && ai.isAggregate() ) {
+            Utils.showError("Aggregate not suppported for array attributes\n");
+          } else {
 
-          if(ai.isNumeric() && !ai.isArray()) {
-            ai.selection = AttributeInfo.SEL_Y1;
+            if (ai.isString())
+              ai.table = true;
+
+            if (ai.isNumeric() && !ai.isArray())
+              ai.selection = AttributeInfo.SEL_Y1;
+
+            //if(ai.isNumeric() && ai.isArray()) {
+            //  ai.selection = AttributeInfo.SEL_IMAGE;
+            //}
+            if (ai.isState() && !ai.isArray())
+              ai.step = true;
+
+            parent.selection.add(ai);
+
           }
 
-          //if(ai.isNumeric() && ai.isArray()) {
-          //  ai.selection = AttributeInfo.SEL_IMAGE;
-          //}
-
-          if(ai.isState() && !ai.isArray()) {
-            ai.step = true;
+        } else {
+        
+          // Add aggregate
+          if( ai.isAggregate() ) {
+            AttributeInfo pAi = AttributeInfo.getFromList(ai, parent.selection);
+            pAi.addAggregate(ai.getFirstAggregate());
           }
-
-          parent.selection.add(ai);
-
+          
         }
+        
+        
       }
 
       parent.updateSelectionList();

@@ -32,6 +32,8 @@ import javax.swing.tree.TreeSelectionModel;
 import org.tango.jhdb.HdbFailed;
 import org.tango.jhdb.HdbReader;
 import org.tango.jhdb.HdbSigParam;
+import org.tango.jhdb.SignalInfo;
+import org.tango.jhdb.data.HdbData;
 
 /**
  *
@@ -209,6 +211,89 @@ class MemberNode extends TreeNode {
 
 }
 
+class IntervalNode extends TreeNode {
+
+  String host;
+  String domain;
+  String family;
+  String member;
+  String name;
+  SignalInfo.Interval interval;
+  
+  IntervalNode(HdbReader reader,String host,String domain,String family,String member,String name,SignalInfo.Interval interval) {
+    this.reader = reader;
+    this.host = host;
+    this.domain = domain;
+    this.family = family;
+    this.member = member;
+    this.name = name;
+    this.interval = interval;
+  }
+  
+  @Override
+  void populateNode() {    
+    for(HdbData.Aggregate a : HdbData.Aggregate.values())
+      add(new AggregateNode(reader, host, domain, family, member, name, interval, a));
+  }
+  
+  @Override
+  ImageIcon getIcon() {
+    return TreeNodeRenderer.aggicon;
+  }
+  
+  @Override
+  public String toString() {
+    return interval.toString();
+  }
+
+}
+
+class AggregateNode extends TreeNode {
+
+  String host;
+  String domain;
+  String family;
+  String member;
+  String name;
+  SignalInfo.Interval interval;
+  HdbData.Aggregate aggregate;
+  
+  AggregateNode(HdbReader reader,String host,String domain,String family,String member,String name,SignalInfo.Interval interval,HdbData.Aggregate aggregate) {
+    this.reader = reader;
+    this.host = host;
+    this.domain = domain;
+    this.family = family;
+    this.member = member;
+    this.name = name;
+    this.interval = interval;
+    this.aggregate = aggregate;
+  }
+
+  @Override
+  public boolean isLeaf() {
+    return true;
+  }
+  
+  @Override
+  void populateNode() {
+  }
+  
+  @Override
+  ImageIcon getIcon() {
+    return TreeNodeRenderer.leaficon;
+  }
+
+  public String getAttributeName() {
+    return domain + "/" + family + "/" + member + "/" + name;
+  }
+  
+  @Override
+  public String toString() {
+    return aggregate.toString();
+  }
+
+}
+
 class AttributeNode extends TreeNode {
 
   String host;
@@ -228,13 +313,20 @@ class AttributeNode extends TreeNode {
   
   @Override
   void populateNode() {
-  }
-
-  @Override
-  public boolean isLeaf() {
-    return true;
+    if(reader.isFeatureSupported(HdbReader.Feature.AGGREGATES)) {
+      add(new IntervalNode(reader, host, domain, family, member, name, SignalInfo.Interval.ONE_MIN));
+      add(new IntervalNode(reader, host, domain, family, member, name, SignalInfo.Interval.TEN_MIN));
+      add(new IntervalNode(reader, host, domain, family, member, name, SignalInfo.Interval.ONE_HOUR));
+      add(new IntervalNode(reader, host, domain, family, member, name, SignalInfo.Interval.EIGHT_HOUR));
+      add(new IntervalNode(reader, host, domain, family, member, name, SignalInfo.Interval.ONE_DAY));
+    }
   }
   
+  @Override
+  public boolean isLeaf() {
+    return !reader.isFeatureSupported(HdbReader.Feature.AGGREGATES);
+  }
+
   @Override
   ImageIcon getIcon() {
     return TreeNodeRenderer.atticon;    
@@ -244,11 +336,7 @@ class AttributeNode extends TreeNode {
   public String toString() {
     return name;
   }
-  
-  public String getHostName() {
-    return host;
-  }
-  
+    
   public String getAttributeName() {
     return domain + "/" + family + "/" + member + "/" + name;
   }
@@ -420,11 +508,24 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
         AttributeNode aNode = (AttributeNode)node;
         AttributeInfo ai = new AttributeInfo();
         ai.name = aNode.getAttributeName();
-        ai.host = aNode.getHostName();
+        ai.host = aNode.host;
         ai.step = false;
         ai.queryMode = queryMode;        
+        ai.interval = SignalInfo.Interval.NONE;
         ret.add(ai);
       }
+      if(node instanceof AggregateNode ) {
+        AggregateNode aNode = (AggregateNode)node;
+        AttributeInfo ai = new AttributeInfo();
+        ai.name = aNode.getAttributeName();
+        ai.host = aNode.host;
+        ai.step = false;
+        ai.queryMode = queryMode;        
+        ai.interval = aNode.interval;
+        ai.addAggregate(aNode.aggregate);
+        ret.add(ai);        
+      }
+      
     }
     
     return ret;
@@ -529,22 +630,28 @@ public class TreePanel extends JPanel implements MouseListener,TreeSelectionList
       if (e.getClickCount() == 1 && e.getButton() == MouseEvent.BUTTON3) {
 
 
-        if( !tree.isSelectionEmpty() && ((TreeNode)selPath.getLastPathComponent()).isLeaf() ) {
+        if( !tree.isSelectionEmpty() ) {
+          
+          TreeNode node = (TreeNode)selPath.getLastPathComponent();
+          
+          if (node instanceof AttributeNode || node instanceof AggregateNode) {
 
-          // Check that the node is not already selected
-          // If not, add it to the path
-          if( !tree.isPathSelected(selPath) )
-            tree.addSelectionPath(selPath);
+            // Check that the node is not already selected
+            // If not, add it to the path
+            if (!tree.isPathSelected(selPath))
+              tree.addSelectionPath(selPath);
 
-          int nbSel = tree.getSelectionCount();
-          if(nbSel>1)
-            addMenu.setText("Add " + nbSel + " items");
-          else
-            addMenu.setText("Add");          
-          actionMenu.show(tree, e.getX(), e.getY());
+            int nbSel = tree.getSelectionCount();
+            if (nbSel > 1)
+              addMenu.setText("Add " + nbSel + " items");
+            else
+              addMenu.setText("Add");
+
+            actionMenu.show(tree, e.getX(), e.getY());
+
+          }
 
         }
-
       }
       
       if(e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON1 ) {

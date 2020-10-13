@@ -1,5 +1,6 @@
 package HDBViewer;
 
+import static fr.esrf.Tango.AttrQuality.ATTR_INVALID;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
@@ -30,7 +31,11 @@ public class MultiLineTable extends JTable {
   }
 
   public void add(String value,int quality,long time,int colIdx) {
-    tableModel.add(value, quality, time, colIdx);
+    if( quality==ATTR_INVALID.value() ) {
+      tableModel.add("/ErrATTR_INVALID", quality, time, colIdx);      
+    } else {
+      tableModel.add(value, quality, time, colIdx);
+    }
   }
   
   public void add(String value,int quality,long time,Collection<Integer> colIdxes) {

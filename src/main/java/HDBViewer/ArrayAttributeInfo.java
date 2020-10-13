@@ -12,7 +12,9 @@ public class ArrayAttributeInfo {
   public JLDataView chartData;  // Dataview
   public JLDataView wchartData; // Dataview (Write value)
   public String     dvSetting;  // Dataview setting
-  public String     wdvSetting;  // Dataview setting
+  public String     wdvSetting; // Dataview setting
+  public int tableIdx;          // Index for table    
+  public int wtableIdx;         // Index for table (write value)
   
   public ArrayAttributeInfo(int idx) {
     this.idx = idx;

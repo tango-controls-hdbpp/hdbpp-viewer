@@ -6,6 +6,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import org.tango.jhdb.HdbSigInfo;
+import org.tango.jhdb.SignalInfo;
+import org.tango.jhdb.data.HdbData;
 
 /** A class for loading selection file */
 
@@ -248,7 +251,7 @@ public class ConfigFileReader {
   // ****************************************************
   private void CHECK_LEX(int lt, int le) throws IOException {
     if (lt != le)
-      throw new IOException("Invalid syntyax at line " + StartLine + ", " + lexical_word[le] + " expected");
+      throw new IOException("Invalid syntyax at line " + StartLine + ", " + lexical_word[le] + " expected, got " + word);
   }
 
   private int getCurrentLine() {
@@ -268,7 +271,7 @@ public class ConfigFileReader {
     while(ok && word!=null) {
 
       if(lex!=NUMBER && lex!=STRING)
-        throw new IOException("Invalid syntyax at line " + StartLine + ": Number or String expected.");
+        throw new IOException("Invalid syntyax at line " + StartLine + ": Number or String expected, got" + word);
 
       word=read_word();
       lex = class_lex(word);
@@ -390,6 +393,45 @@ public class ConfigFileReader {
 
   }
 
+  private HdbSigInfo.Interval parseInterval() throws IOException {
+
+    CHECK_LEX(class_lex(word),STRING);
+    String value=word;
+    word=read_word();
+    
+    HdbSigInfo.Interval[] allValues = HdbSigInfo.Interval.values();
+    boolean found = false;
+    int i = 0;
+    while(!found && i<allValues.length) {
+      found = allValues[i].toString().equalsIgnoreCase(value);
+      if(!found) i++;
+    }
+    if( !found ) 
+          throw new IOException("Invalid interval '"+value+"' at line " + StartLine);
+
+    return allValues[i];
+
+  }
+
+  private HdbData.Aggregate parseAggregate() throws IOException {
+
+    CHECK_LEX(class_lex(word),STRING);
+    String value=word;
+    word=read_word();
+    
+    HdbData.Aggregate[] allValues = HdbData.Aggregate.values();
+    boolean found = false;
+    int i = 0;
+    while(!found && i<allValues.length) {
+      found = allValues[i].toString().equalsIgnoreCase(value);
+      if(!found) i++;
+    }
+    if( !found ) 
+          throw new IOException("Invalid aggregate "+value+" at line " + StartLine);
+
+    return allValues[i];
+
+  }
 
   private String parseProperyName() throws IOException {
     String propName=parseString();
@@ -461,6 +503,33 @@ public class ConfigFileReader {
     return aai;
       
   }
+  
+  private AggregateAttributeInfo parseAggregateBody() throws IOException {
+
+    AggregateAttributeInfo aai = new AggregateAttributeInfo();
+
+    // Parse expanded section
+    startBlock();
+    while(!isEndBlock()) {
+      String propName = parseProperyName();
+      if ( propName.equals("step") ) {
+        aai.step = parseBoolean();
+      } else if ( propName.equals("table") ) {
+        aai.table = parseBoolean();
+      } else if ( propName.equals("selection") ) {
+        aai.selection = parseInt();
+      } else if ( propName.equals("dv") ) {
+        aai.dvSettings = parseSettingsSection();
+      } else {
+        System.out.println("Warning, unknown aggregate property found:" + propName);
+        jumpPropertyValue();
+      }
+    }
+    endBlock();
+   
+    return aai;
+    
+  }
 
   private ArrayList<ArrayAttributeInfo> parseExpanded() throws IOException {
     
@@ -529,6 +598,8 @@ public class ConfigFileReader {
           ai.host = parseString();
         } else if ( propName.equals("name") ) {
           ai.name = parseString();
+        } else if ( propName.equals("interval") ) {
+          ai.interval = parseInterval();
         } else if ( propName.equals("step") ) {
           ai.step = parseBoolean();
         } else if ( propName.equals("table") ) {
@@ -543,6 +614,12 @@ public class ConfigFileReader {
           ai.setWriteDataViewSettings(parseSettingsSection());
         } else if ( propName.equals("expanded") ) {
           ai.arrAttInfos = parseExpanded();
+        } else if ( propName.equals("aggregate") ) {
+          if(!ai.isAggregate()) {
+            throw new IOException("Aggregates not allowed for RAW interval at line " + StartLine);
+          }
+          HdbData.Aggregate agg = parseAggregate();
+          ai.addAggregate(agg, parseAggregateBody());
         } else {
           System.out.println("Warning, unknown attribute property found:" + propName);
           jumpPropertyValue();

@@ -76,6 +76,7 @@ abstract class TreeNode extends DefaultMutableTreeNode {
    final static ImageIcon leaficon = new ImageIcon(TreeNodeRenderer.class.getResource("/HDBViewer/leaf.gif"));
    final static ImageIcon atticon = new ImageIcon(TreeNodeRenderer.class.getResource("/HDBViewer/attribute.gif"));
    final static ImageIcon hosticon = new ImageIcon(TreeNodeRenderer.class.getResource("/HDBViewer/host.gif"));
+   final static ImageIcon aggicon = new ImageIcon(TreeNodeRenderer.class.getResource("/HDBViewer/aggregate.gif"));
 
 
    public TreeNodeRenderer() {}

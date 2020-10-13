@@ -21,6 +21,9 @@ release/
 .idea/dictionaries
 .idea/vcs.xml
 .idea/jsLibraryMappings.xml
+*.hdb
+jhdbviewer
+jhdbviewer-cassandra
 
 # Sensitive or high-churn files:
 .idea/dataSources.ids

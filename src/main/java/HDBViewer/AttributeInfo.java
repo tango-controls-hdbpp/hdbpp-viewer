@@ -4,13 +4,10 @@ import fr.esrf.tangoatk.widget.util.chart.CfFileReader;
 import fr.esrf.tangoatk.widget.util.chart.JLDataView;
 import java.awt.Color;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.tango.jhdb.HdbSigInfo;
 import org.tango.jhdb.HdbSigParam;
 import org.tango.jhdb.SignalInfo;
 import org.tango.jhdb.data.HdbData;
@@ -21,7 +18,7 @@ import org.tango.jhdb.data.HdbDataSet;
  * @author pons
  */
 public class AttributeInfo {
-
+  
   public static final int SEL_NONE = 0;
   public static final int SEL_Y1 = 1;
   public static final int SEL_Y2 = 2;
@@ -33,7 +30,7 @@ public class AttributeInfo {
 
   public String  host;          // Tango HOST
   public String  name;          // 4 fields attribute name
-  private String  type = "";          // HdbType of the signal
+  private String  type = "";    // HdbType of the signal
   public String  unit;          // Unit
   public double  A1;            // Conversion factor
   public SignalInfo sigInfo;    // Signal info struct
@@ -41,23 +38,20 @@ public class AttributeInfo {
   public boolean table;         // Display in HDB table
   public int     selection;     // Selection mode
   public int     wselection;    // Selection mode (write value)
-  private Map<SignalInfo.Interval, Integer> dataSize;      // Data number
-  private Map<SignalInfo.Interval, Integer> errorSize;     // Error number
-  private JLDataView[] chartData = new JLDataView[3];
-//  public JLDataView chartData;  // Dataview
-//  public JLDataView wchartData; // Dataview (Write value)
-//  public JLDataView errorData;  // Dataview (Errors)
-  private Map<SignalInfo.Interval, Map<HdbData.Aggregate, JLDataView>> aggData;  // Dataviews for aggregate data
-  public ArrayList<HdbData> errors; // Errors
+  public int     dataSize;      // Data number
+  public int     errorSize;     // Error number
+  public SignalInfo.Interval interval; // Aggreate interval
+  public ArrayList<HdbData> errors; // Errors (for click on chart)
   public HdbDataSet arrayData;  // Data for array attribute
   public int maxArraySize;      // maximum size of arrayData
   public int queryMode;         // Query mode (0->DATA 1..10->Config)
-  private String[] dataViewSettings = new String[2]; // String containing dataview settings
-//  public String dvSettings;     // String containing dataview settings
-//  public String wdvSettings;    // String containing dataview (write) settings
+  public int tableIdx;          // Index for table    
+  public int wtableIdx;         // Index for table (write value)
 
 
-  private Map<SignalInfo.Interval, Set<HdbData.Aggregate>> extractDataInfo = new EnumMap<>(SignalInfo.Interval.class);
+  private JLDataView[] chartData;                       // Dataviews for raw data (value,setpoint,error)
+  private String dataViewSettings[];                    // Dataview settings
+  private Map<HdbData.Aggregate, AggregateAttributeInfo> aggInfos;     // Aggregate infos
 
   // List of expanded array item (Array item show as scalar)
   public ArrayList<ArrayAttributeInfo> arrAttInfos;
@@ -66,17 +60,19 @@ public class AttributeInfo {
   public AttributeInfo() {
     step = false;
     table = false;
+    interval = HdbSigInfo.Interval.NONE;
     selection = SEL_NONE;
     wselection = SEL_NONE;
-    dataSize = new EnumMap<>(SignalInfo.Interval.class);
-    errorSize = new EnumMap<>(SignalInfo.Interval.class);
-    aggData = new EnumMap<>(SignalInfo.Interval.class);
+    dataSize = 0;
+    errorSize = 0;
+    chartData = new JLDataView[3];
+    dataViewSettings = new String[3];
+    aggInfos = new HashMap<HdbData.Aggregate,AggregateAttributeInfo>();
     maxArraySize = -1;
     arrAttInfos = null;
     unit = "";
     queryMode = HdbSigParam.QUERY_DATA;
     A1 = 1.0;
-    extractDataInfo.put(SignalInfo.Interval.NONE, new HashSet<HdbData.Aggregate>());
   }
 
   public String getName() {
@@ -145,7 +141,8 @@ public class AttributeInfo {
     int i = 0;
     while(!found && i<list.size()) {
       found = item.sigInfo.sigId.equals(list.get(i).sigInfo.sigId) &&
-              (item.sigInfo.queryConfig == list.get(i).sigInfo.queryConfig);
+              (item.sigInfo.queryConfig == list.get(i).sigInfo.queryConfig) &&
+              (item.interval == list.get(i).interval);
       if(!found) i++;
     }
 
@@ -158,7 +155,9 @@ public class AttributeInfo {
     boolean found = false;
     int i = 0;
     while(!found && i<list.size()) {
-      found = item.sigInfo.sigId.equals(list.get(i).sigInfo.sigId);
+      found = item.sigInfo.sigId.equals(list.get(i).sigInfo.sigId) &&
+              (item.sigInfo.queryConfig == list.get(i).sigInfo.queryConfig) &&
+              item.interval == list.get(i).interval;
       if(!found) i++;
     }
 
@@ -168,60 +167,45 @@ public class AttributeInfo {
       return list.get(i);
 
   }
-
-  void toggleAggregate(SignalInfo.Interval interval, HdbData.Aggregate agg) {
-    if(extractDataInfo.containsKey(interval))
-    {
-      //For none (raw data) the set of aggregate is empty so we don't
-      //even check, but one other extract is needed.
-      if(interval == SignalInfo.Interval.NONE)
-      {
-        if(extractDataInfo.size()>1)
-        {
-          extractDataInfo.remove(interval);
-        }
-      }
-      else
-      {
-        Set<HdbData.Aggregate> aggs = extractDataInfo.get(interval);
-        if(aggs.contains(agg))
-        {
-          //last aggregate, remove the interval alltogether, unless it is the last one.
-          if(aggs.size() == 1)
-          {
-            if(extractDataInfo.size()>1)
-            {
-              extractDataInfo.remove(interval);
-            }
-          }
-          else
-          {
-            aggs.remove(agg);
-          }
-        }
-        else
-        {
-          aggs.add(agg);
-        }
-      }
-    }
-    else
-    {
-      HashSet<HdbData.Aggregate> aggs = new HashSet<HdbData.Aggregate>();
-      if(interval != SignalInfo.Interval.NONE)
-      {
-        aggs.add(agg);
-      }
-      extractDataInfo.put(interval, aggs);
-    }
+  
+  public boolean isRAW() {
+    return interval == SignalInfo.Interval.NONE;
   }
 
-  Set<HdbData.Aggregate> getAggregates(SignalInfo.Interval interval) {
-    return extractDataInfo.getOrDefault(interval, new HashSet<HdbData.Aggregate>());
+  public boolean isAggregate() {
+    return interval != SignalInfo.Interval.NONE;
   }
 
-  Set<SignalInfo.Interval> getIntervals() {
-    return extractDataInfo.keySet();
+  public HdbData.Aggregate getFirstAggregate() {
+    return aggInfos.keySet().iterator().next();
+  }
+  
+  public Set<HdbData.Aggregate> getAggregates() {
+    return aggInfos.keySet();
+  }
+  
+  public int getNbAggregate() {
+    return aggInfos.keySet().size();
+  }
+  
+  public AggregateAttributeInfo getAggregate(HdbData.Aggregate agg) {
+
+    AggregateAttributeInfo a = aggInfos.get(agg);
+    if(a==null) {
+      System.out.print("AttributeInfo::getAggregate() unexpected aggregate: "+agg.toString());
+    }
+    return a;
+    
+  }
+  
+  public void addAggregate(HdbData.Aggregate agg) {
+    AggregateAttributeInfo a = new AggregateAttributeInfo();
+    a.selection = SEL_Y1;
+    aggInfos.put(agg,a);
+  }
+
+  public void addAggregate(HdbData.Aggregate agg,AggregateAttributeInfo a) {
+    aggInfos.put(agg,a);
   }
   
   public JLDataView getDataView()
@@ -239,11 +223,9 @@ public class AttributeInfo {
     return chartData[ERROR_DATA_IDX];
   }
   
-  // to avoid creating a new map each time aggData is empty.
-  private final static Map<HdbData.Aggregate, JLDataView> EMPTY_DATA_VIEWS = new EnumMap<HdbData.Aggregate, JLDataView>(HdbData.Aggregate.class);
-  public JLDataView getAggregateDataView(SignalInfo.Interval interval, HdbData.Aggregate agg)
+  public JLDataView getAggregateDataView(HdbData.Aggregate agg)
   {
-    return aggData.getOrDefault(interval, EMPTY_DATA_VIEWS).get(agg);
+    return aggInfos.get(agg).dv;
   }
   
   public void setDataViewSettings(String settings)
@@ -256,38 +238,18 @@ public class AttributeInfo {
     dataViewSettings[WRITE_DATA_IDX] = settings;
   }
   
-  public void setDataSize(SignalInfo.Interval interval, int val)
-  {
-    dataSize.put(interval, val);
-  }  
-  
-  public void incrementDataSize(SignalInfo.Interval interval)
-  {
-    int newVal = dataSize.getOrDefault(interval, 0);
-    dataSize.put(interval, ++newVal);
+  public boolean hasChartSelection() {
+    
+    if(selection==SEL_Y1 || selection==SEL_Y2)
+      return true;
+    boolean sel = false;
+    for(HdbData.Aggregate agg:aggInfos.keySet())
+      sel |= (getAggregate(agg).selection==SEL_Y1 || 
+              getAggregate(agg).selection==SEL_Y2);
+    return sel;
+    
   }
   
-  public int getDataSize(SignalInfo.Interval interval)
-  {
-    return dataSize.getOrDefault(interval, 0);
-  }
-  
-  public void setErrorSize(SignalInfo.Interval interval, int val)
-  {
-    errorSize.put(interval, val);
-  }
- 
-  public void incrementErrorSize(SignalInfo.Interval interval)
-  {
-    int newVal = errorSize.getOrDefault(interval, 0);
-    errorSize.put(interval, ++newVal);
-  }
-  
-  public int getErrorSize(SignalInfo.Interval interval)
-  {
-    return errorSize.getOrDefault(interval, 0);
-  }
-
   /***
    * Reset all the dataviews stored in this attribute and its arrayattributes.
    * Clear the arrayData as well.
@@ -299,11 +261,11 @@ public class AttributeInfo {
       if(data != null)
         data.reset();
     }
-    for(Map<HdbData.Aggregate, JLDataView> aggdata : aggData.values())
-    {
-      for(JLDataView data : aggdata.values())
-        data.reset();
-    }
+    
+    for(AggregateAttributeInfo a : aggInfos.values())
+      if(a.dv!=null)
+        a.dv.reset();
+    
     if(isExpanded()) {
       for(ArrayAttributeInfo ai : arrAttInfos) {
         if(ai.chartData!=null)
@@ -312,7 +274,11 @@ public class AttributeInfo {
           ai.wchartData.reset();
       }
     }
+    
     arrayData = null;
+    dataSize = 0;
+    errorSize = 0;
+    
   }
   
   /***
@@ -322,40 +288,36 @@ public class AttributeInfo {
    * @param interval
    * @return 
    */
-  public int initializeDataViews(int colorIdx, Color[] ColorBase, SignalInfo.Interval interval)
+  public int initializeDataViews(int colorIdx, Color[] ColorBase)
   {
     int addedData = 0;
-    Color c = ColorBase[colorIdx%ColorBase.length];
-    if(interval != SignalInfo.Interval.NONE)
-    {
-      for(HdbData.Aggregate agg : getAggregates(interval))
-      {
-        initializeData(interval, agg, ColorBase[colorIdx++%ColorBase.length]);
+    Color c = ColorBase[colorIdx % ColorBase.length];
+    if (interval != SignalInfo.Interval.NONE) {
+      for (HdbData.Aggregate agg : aggInfos.keySet()) {
+        initializeAggreateDataViews(agg, ColorBase[colorIdx++ % ColorBase.length]);
+        addedData++;
+      }
+    } else {
+      initializeDataViews(DATA_IDX, ColorBase[colorIdx++ % ColorBase.length], "");
+      addedData++;
+      if (isRW()) {
+        initializeDataViews(WRITE_DATA_IDX, ColorBase[colorIdx++ % ColorBase.length], "_w");
         addedData++;
       }
     }
-    else
-    {
-      initializeData(DATA_IDX, ColorBase[colorIdx++%ColorBase.length], "");
-      if(isRW())
-      {
-        initializeData(WRITE_DATA_IDX, ColorBase[colorIdx++%ColorBase.length], "_w");
-      }
-    }
-    if(chartData[ERROR_DATA_IDX] == null)
-    {
+    if (chartData[ERROR_DATA_IDX] == null) {
       chartData[ERROR_DATA_IDX] = new JLDataView();
       chartData[ERROR_DATA_IDX].setLineWidth(0);
       chartData[ERROR_DATA_IDX].setMarker(JLDataView.MARKER_DOT);
       chartData[ERROR_DATA_IDX].setLabelVisible(false);
       chartData[ERROR_DATA_IDX].setMarkerColor(c.darker());
     }
-    chartData[ERROR_DATA_IDX].setName(getName()+"_error");
+    chartData[ERROR_DATA_IDX].setName(getName() + "_error");
     errors = new ArrayList<>();
     return addedData;
   }
   
-  private void initializeData(int idx, Color c, String suffix)
+  private void initializeDataViews(int idx, Color c, String suffix)
   {
     if(chartData[idx] == null)
     {
@@ -371,18 +333,46 @@ public class AttributeInfo {
     }
     chartData[idx].setName(getName() + suffix);
   }
+  
+  public String getUnit(HdbData.Aggregate agg) {
 
-  private void initializeData(SignalInfo.Interval interval, HdbData.Aggregate agg, Color c)
+    String _unit = unit;
+    switch (agg) {
+      case ROWS_COUNT:
+        _unit = "rows";
+        break;
+      case ERRORS_COUNT:
+        _unit = "errors";
+        break;
+      case COUNT_R:
+      case COUNT_W:
+        _unit = "values";
+        break;
+      case NAN_COUNT_R:
+      case NAN_COUNT_W:
+        _unit = "nans";
+        break;
+    }
+    return _unit;
+
+  }
+
+  private void initializeAggreateDataViews(HdbData.Aggregate agg, Color c)
   {
-    JLDataView data = new JLDataView();
-    data.setColor(c);
-    data.setUnit(unit);
-    data.setName(getName() + "_" + agg.toString());
-
-    if(!aggData.containsKey(interval))
-      aggData.put(interval, new EnumMap<HdbData.Aggregate, JLDataView>(HdbData.Aggregate.class));
-
-    aggData.get(interval).put(agg, data);
+    AggregateAttributeInfo a = getAggregate(agg);
+    if( a!=null ) {
+      if (a.dv == null) {
+        a.dv = new JLDataView();
+        a.dv.setColor(c);
+        a.dv.setUnit(getUnit(agg));
+        if(a.dvSettings != null) {
+          CfFileReader cfr = new CfFileReader();
+          cfr.parseText(a.dvSettings);
+          a.dv.applyConfiguration("dv", cfr);
+        }
+        a.dv.setName(getName() + "_" + interval.toString() + "_" + agg.toString());
+      }
+    }
   }
 
 }

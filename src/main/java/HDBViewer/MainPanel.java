@@ -11,16 +11,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -31,8 +24,6 @@ import org.tango.jhdb.HdbReader;
 import org.tango.jhdb.HdbSigInfo;
 import org.tango.jhdb.HdbSigParam;
 import org.tango.jhdb.SignalInfo;
-import org.tango.jhdb.SignalInfo.Interval;
-import static org.tango.jhdb.SignalInfo.Interval.NONE;
 import org.tango.jhdb.data.HdbData;
 import org.tango.jhdb.data.HdbDataSet;
 import org.tango.jhdb.data.HdbFloatArray;
@@ -41,6 +32,7 @@ import org.tango.jhdb.data.HdbLongArray;
 import org.tango.jhdb.data.HdbShortArray;
 import org.tango.jhdb.data.HdbState;
 import org.tango.jhdb.data.HdbStateArray;
+import org.tango.jhdb.data.HdbStringArray;
 
 /**
  *
@@ -80,7 +72,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
   long startR;
   long stopR;
-
+  
   protected static Color[] defaultColor = {
     Color.red,
     Color.blue,
@@ -268,6 +260,8 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     ai.name = name;
     HdbSigInfo si = hdb.getReader().getSigInfo(ai.getFullName());
     ai.sigInfo = si;
+    ai.sigInfo.queryConfig = HdbSigParam.QUERY_DATA;
+    ai.interval = SignalInfo.Interval.NONE;
 
     AttributeInfo eai = AttributeInfo.getFromList(ai, selection);
 
@@ -412,6 +406,10 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
   }
 
+  public boolean selectAttribute(AttributeInfo ai,int item,int selMode,boolean selectWrite) {
+    return selectAttribute(ai,item,null,selMode,selectWrite);
+  }
+
   /**
    * Select given attribute
    * @param ai Attribute Info
@@ -420,7 +418,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
    * @param selectWrite true to select the write attribute (if any)
    * @return true if the given attribute can be selected
    */
-  public boolean selectAttribute(AttributeInfo ai,int item,int selMode,boolean selectWrite) {
+  public boolean selectAttribute(AttributeInfo ai,int item,HdbData.Aggregate agg,int selMode,boolean selectWrite) {
 
     int curMode = 0;
     List<JLDataView> dvs = new ArrayList<>();
@@ -440,37 +438,41 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
     if (item < 0) {
 
-      // Normal attribute
-      if (selectWrite) {
-        ai.wselection = selMode;
-      } else {
-        ai.selection = selMode;
-      }
+      if (ai.isAggregate()) {
+        
+        ai.getAggregate(agg).selection = selMode;
+        JLDataView dv = ai.getAggregateDataView(agg);
+        if(dv!=null)
+          dvs.add(dv);
 
-      if (selMode == AttributeInfo.SEL_IMAGE) {
-        selectImageItem(ai, selectWrite);
-        return true;
-      }
-
-      if (!selectWrite) {
-        curMode = ai.selection;
-        if(ai.getDataView() != null)
-          dvs.add(ai.getDataView());
       } else {
-        curMode = ai.wselection;
-        if(ai.getWriteDataView() != null)
-          dvs.add(ai.getWriteDataView());
+
+        // Normal attribute
+        if (selectWrite) {
+          ai.wselection = selMode;
+        } else {
+          ai.selection = selMode;
+        }
+
+        if (selMode == AttributeInfo.SEL_IMAGE) {
+          selectImageItem(ai, selectWrite);
+          return true;
+        }
+
+        if (!selectWrite) {
+          curMode = ai.selection;
+          if (ai.getDataView() != null) {
+            dvs.add(ai.getDataView());
+          }
+        } else {
+          curMode = ai.wselection;
+          if (ai.getWriteDataView() != null) {
+            dvs.add(ai.getWriteDataView());
+          }
+        }
+
       }
       
-      for(Interval interval : ai.getIntervals())
-      {
-        for(HdbData.Aggregate agg : ai.getAggregates(interval))
-        {
-          final JLDataView dv = ai.getAggregateDataView(interval, agg);
-          if(dv != null)
-            dvs.add(ai.getAggregateDataView(interval, agg));
-        }
-      }
 
       if (dvs.isEmpty()) {
         // Search has not been performed yet
@@ -585,7 +587,18 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
 
   }
+  
+  private void addToDv(JLDataView dv,double time,double value,MutableDouble last,boolean step) {
+    
+    if( step )
+      if (!Double.isNaN(last.value))
+          dv.add(time, last.value);      
 
+    dv.add(time,value);
+    last.value = value;
+        
+  }
+  
   private void createDataviewExpanded(AttributeInfo ai,int item) {
 
     boolean isRW = ai.isRW();
@@ -614,8 +627,8 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     }
 
     // Fill the dvs
-    double lastValue = Double.NaN;
-    double lastWriteValue = Double.NaN;
+    MutableDouble lastValue = new MutableDouble(Double.NaN);
+    MutableDouble lastWriteValue= new MutableDouble(Double.NaN);
 
     for (int j = 0; j < set.size(); j++) {
 
@@ -624,42 +637,13 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
       try {
 
-        if (aai.step) {
-
-          // Read
-          if (!Double.isNaN(lastValue))
-            aai.chartData.add(chartTime, lastValue);
-
-          if(aai.idx>d.size()) {
-            aai.chartData.add(chartTime,Double.NaN);
-            lastValue = Double.NaN;
-          } else  {
-            lastValue = d.getValueAsDoubleArray()[aai.idx];
-            aai.chartData.add(chartTime,lastValue);
-          }
-
-          // Write
-          if( isRW ) {
-
-            if (!Double.isNaN(lastWriteValue))
-              aai.wchartData.add(chartTime, lastValue);
-
-            if(aai.idx>d.sizeW()) {
-              aai.wchartData.add(chartTime,Double.NaN);
-              lastWriteValue = Double.NaN;
-            } else  {
-              lastWriteValue = d.getWriteValueAsDoubleArray()[aai.idx];
-              aai.wchartData.add(chartTime,lastWriteValue);
-            }
-
-          }
-
-        } else {
-
-          aai.chartData.add(chartTime, d.getValueAsDoubleArray()[aai.idx]);
-          if (isRW)
-            aai.wchartData.add(chartTime, d.getWriteValueAsDoubleArray()[aai.idx]);
-
+        // Read
+        double r = (aai.idx>d.size())?Double.NaN:d.getValueAsDoubleArray()[aai.idx];
+        addToDv(aai.chartData,chartTime,r,lastValue,aai.step);
+          
+        if( isRW ) {            
+          double s = (aai.idx>d.sizeW())?Double.NaN:d.getWriteValueAsDoubleArray()[aai.idx];
+          addToDv(aai.wchartData,chartTime,s,lastWriteValue,aai.step);            
         }
 
       } catch (HdbFailed e) {
@@ -668,8 +652,8 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         if (isRW)
           aai.wchartData.add(chartTime, Double.NaN);
 
-        lastValue = Double.NaN;
-        lastWriteValue = Double.NaN;
+        lastValue.value = Double.NaN;
+        lastWriteValue.value = Double.NaN;
 
       }
 
@@ -719,7 +703,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       f.write("    script:\""+selPanel.getPyScript()+"\"\n");
       f.write("    showError:"+Boolean.toString(chartPanel.isShowingError())+"\n");
       f.write("    timeInterval:"+hdbTreePanel.getTimeInterval()+"\n");
-      f.write("    hdbMode:"+hdbTreePanel.getHdbMode()+"\n");
+      f.write("    hdbMode:"+hdbTreePanel.getHdbMode().ordinal()+"\n");
       if(saveChartSettings) {
         f.write("    chart:{\n");
         f.write(indent(chartPanel.chart.getConfiguration(),"      "));
@@ -741,36 +725,56 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
         f.write("  Attribute {\n");
         f.write("    host:\""+ai.host+"\"\n");
         f.write("    name:\""+ai.name+"\"\n");
-        f.write("    step:"+Boolean.toString(ai.step)+"\n");
-        f.write("    table:"+Boolean.toString(ai.table)+"\n");
-        f.write("    selection:"+ai.selection+"\n");
-        if(saveChartSettings && ai.getDataView() != null) {
-          f.write("    dv: {\n"+ai.getDataView().getConfiguration("      dv")+"    }\n");
-        }
-        f.write("    wselection:"+ai.wselection+"\n");
-        if(saveChartSettings && ai.getWriteDataView() != null) {
-          f.write("    wdv: {\n"+ai.getWriteDataView().getConfiguration("      dv")+"    }\n");
-        }
-
-        if(ai.isExpanded()) {
-          f.write("    expanded: {\n");
-          for(ArrayAttributeInfo aai:ai.arrAttInfos) {
-            f.write("    idx "+aai.idx+" {\n");
-            f.write("      step:"+Boolean.toString(aai.step)+"\n");
-            f.write("      table:"+Boolean.toString(aai.table)+"\n");
-            f.write("      selection:"+aai.selection+"\n");
-            if(saveChartSettings && aai.chartData != null) {
-              f.write("      dv: {\n"+aai.chartData.getConfiguration("        dv")+"      }\n");
-            }
-            f.write("      wselection:"+aai.wselection+"\n");
-            if(saveChartSettings && aai.wchartData != null) {
-              f.write("      wdv: {\n"+aai.wchartData.getConfiguration("        dv")+"      }\n");
+        f.write("    interval:"+ai.interval+"\n");
+        
+        if(ai.isAggregate()) {
+          
+          for (HdbData.Aggregate agg : ai.getAggregates()) {
+            f.write("    aggregate: "+agg.toString()+" {\n");
+            AggregateAttributeInfo aggInfo = ai.getAggregate(agg);
+            f.write("      step:" + Boolean.toString(aggInfo.step) + "\n");
+            f.write("      table:" + Boolean.toString(aggInfo.table) + "\n");
+            f.write("      selection:" + aggInfo.selection + "\n");
+            if (saveChartSettings && aggInfo.dv != null) {
+              f.write("      dv: {\n" + aggInfo.dv.getConfiguration("        dv") + "      }\n");
             }
             f.write("    }\n");
           }
-          f.write("    }\n");
-        }
+          
+        } else {
+          
+          f.write("    step:" + Boolean.toString(ai.step) + "\n");
+          f.write("    table:" + Boolean.toString(ai.table) + "\n");
+          f.write("    selection:" + ai.selection + "\n");
+          if (saveChartSettings && ai.getDataView() != null) {
+            f.write("    dv: {\n" + ai.getDataView().getConfiguration("      dv") + "    }\n");
+          }
+          f.write("    wselection:" + ai.wselection + "\n");
+          if (saveChartSettings && ai.getWriteDataView() != null) {
+            f.write("    wdv: {\n" + ai.getWriteDataView().getConfiguration("      dv") + "    }\n");
+          }
 
+          if (ai.isExpanded()) {
+            f.write("    expanded: {\n");
+            for (ArrayAttributeInfo aai : ai.arrAttInfos) {
+              f.write("    idx " + aai.idx + " {\n");
+              f.write("      step:" + Boolean.toString(aai.step) + "\n");
+              f.write("      table:" + Boolean.toString(aai.table) + "\n");
+              f.write("      selection:" + aai.selection + "\n");
+              if (saveChartSettings && aai.chartData != null) {
+                f.write("      dv: {\n" + aai.chartData.getConfiguration("        dv") + "      }\n");
+              }
+              f.write("      wselection:" + aai.wselection + "\n");
+              if (saveChartSettings && aai.wchartData != null) {
+                f.write("      wdv: {\n" + aai.wchartData.getConfiguration("        dv") + "      }\n");
+              }
+              f.write("    }\n");
+            }
+            f.write("    }\n");
+          }
+
+        }
+        
         f.write("  }\n");
 
       }
@@ -830,8 +834,6 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
     reset();
     
-    final HashMap<SignalInfo, AttributeInfo> attributes = new HashMap<>();
-
     // Perform HDB query in a separate thread
     Thread doSearch = new Thread() {
       public void run() {
@@ -843,19 +845,14 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
         // Array of sigIds
         ArrayList<HdbReader.SignalInput> sigIn = new ArrayList<>(selection.size());
-        for (AttributeInfo att : selection)
-        {
-          for(SignalInfo.Interval itl : att.getIntervals())
-          {
-            HdbReader.SignalInput input = new HdbReader.SignalInput();
-            input.info = new SignalInfo(att.sigInfo);
-            input.startDate = startDate;
-            input.endDate = stopDate;
-            input.info.interval = itl; //this will only be used for aggregate.
-            input.info.aggregates = att.getAggregates(itl);
-            attributes.put(input.info, att);
-            sigIn.add(input);
-          }
+        for (AttributeInfo att : selection) {
+          HdbReader.SignalInput input = new HdbReader.SignalInput();
+          input.info = new SignalInfo(att.sigInfo);
+          input.startDate = startDate;
+          input.endDate = stopDate;
+          input.info.interval = att.interval; //this will only be used for aggregate.
+          input.info.aggregates = att.getAggregates();
+          sigIn.add(input);
         }
 
         try {
@@ -896,11 +893,13 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
           }
 
           // Apply conversion factor
+          int resultIdx = 0;
           for(HdbDataSet result : results)
           {
-              AttributeInfo att = attributes.get(result.getSigInfo());
-              if(att != null && att.A1 != 1.0)
-                result.applyConversionFactor(att.A1);
+              AttributeInfo ai = selection.get(resultIdx);
+              if(ai != null && ai.A1 != 1.0)
+                result.applyConversionFactor(ai.A1);
+              resultIdx++;
           }
 
           // Run python script (if any)
@@ -926,12 +925,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
               ai.table = true;
               SignalInfo dummySi = new SignalInfo();
               dummySi.name = ai.name;
-              int resultIdx = 0;
-              if(i < results.length)
-              {
-                  resultIdx = i;
-              }
-              SignalInfo inputInfo = results[resultIdx].get(0).info;
+              SignalInfo inputInfo = results[(i<results.length)?i:0].get(0).info;
               // Assume same type as the input.
               dummySi.dataType = inputInfo.dataType;
               dummySi.format = inputInfo.format;
@@ -1004,348 +998,318 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     boolean hasTable = false;
     boolean hasImage = false;
 
+    // ----------------------------------------------------------------------
     // Browse results
+    // ----------------------------------------------------------------------
+    int resultIdx = 0;
     for (HdbDataSet result : results) {
 
-      AttributeInfo attInfo = attributes.get(result.getSigInfo());
+      AttributeInfo attInfo = selection.get(resultIdx);
       SignalInfo.Interval interval = result.getSigInfo().interval;
       boolean isRW = attInfo.isRW();
-      attInfo.setDataSize(interval, 0);
-      attInfo.setErrorSize(interval, 0);
+      attInfo.dataSize = 0;
+      attInfo.errorSize = 0;
 
       String unitSuffix = "";
       if(attInfo.unit.length()>0)
         unitSuffix = " (" + attInfo.unit + ")";
-      
-      
-      String intervalSuffix = "";
-      if(interval != NONE)
-        intervalSuffix = " - " + interval.toString() + "";
-      
-      // Chart data
-      if (attInfo.isNumeric())
-      {
-        if(!attInfo.isArray())
-        {
-          if(attInfo.selection != AttributeInfo.SEL_NONE ||
-             attInfo.wselection != AttributeInfo.SEL_NONE )
-            hasChart = true;
-
+            
+      // ----------------------------------------------------------------------
+      // Prepare DataView
+      // ----------------------------------------------------------------------
+      if (attInfo.isNumeric()) {        
+        if (!attInfo.isArray()) {
+          hasChart = hasChart || attInfo.hasChartSelection();
           // Numeric scalar data
-          // Create the chart dataview
-          dvIdx += attInfo.initializeDataViews(dvIdx, defaultColor, interval);
-          
-        }
-        // Image data
-        else
-        {
+          // Create the chart dataview (if needed)
+          dvIdx += attInfo.initializeDataViews(dvIdx, defaultColor);
+        } else {
+          // Image data
           hasImage = hasImage || (attInfo.selection == AttributeInfo.SEL_IMAGE);
           attInfo.arrayData = result;
           attInfo.maxArraySize = -1;
         }
       }
 
-      ArrayList<Integer> idxes = new ArrayList<>();
-      ArrayList<Integer> writeIdxes = new ArrayList<>();
-      Map<HdbData.Aggregate, Integer> aggToColIdxes = new EnumMap<>(HdbData.Aggregate.class);
-      // Table data
-      if(attInfo.table) {
+      // ----------------------------------------------------------------------
+      // Compute table column names and indexes
+      // ----------------------------------------------------------------------
+      if (attInfo.isAggregate()) {
 
-        hasTable = true;
-
-        if(interval == NONE)
-        {
-          colNames.add(attInfo.getName() + unitSuffix);
-          idxes.add(colNames.size()-1);
-          if(isRW)
-          {
-            colNames.add(attInfo.getName() + "_w" + unitSuffix);
-            writeIdxes.add(colNames.size()-1);
-          }
-        }
-        else
-        {
-          for(HdbData.Aggregate agg : result.getSigInfo().aggregates)
-          {
-            colNames.add(attInfo.getName() + " [" +agg.toString()+ intervalSuffix + "]"+ unitSuffix);
-            aggToColIdxes.put(agg, colNames.size()-1);
-          }
-        }
-      }
-
-      TreeMap<Integer, Integer> attToColIdx = new TreeMap<>();
-      int maxIdx = Integer.MIN_VALUE;
-      TreeMap<Integer, Integer> writeAttToColIdx = new TreeMap<>();
-      int maxWriteIdx = Integer.MIN_VALUE;
-      // Expanded attribute in table
-      if (attInfo.isExpanded()) {
-
-        for (ArrayAttributeInfo aai : attInfo.arrAttInfos) {
-
-          if (aai.table) {
-
+        for (HdbData.Aggregate agg : attInfo.getAggregates()) {
+          if (attInfo.getAggregate(agg).table) {
             hasTable = true;
+            attInfo.getAggregate(agg).tableIdx = colNames.size();
+            colNames.add(attInfo.getName() + "_" + interval.toString() + "_" + agg.toString() + "(" + attInfo.getUnit(agg) + ")");
+          }
+        }
 
-            int idx = aai.idx;
-            maxIdx = Math.max(maxIdx, idx);
-            String unitPreffix = "";
-            if(attInfo.unit.length()>0)
-              unitPreffix =  " (" + attInfo.unit + ")";
-            colNames.add(attInfo.getName() + "[" + idx + "]" + unitPreffix);
-            attToColIdx.put(idx, colNames.size()-1);
-            if(isRW)
-            {
-              maxWriteIdx = Math.max(maxWriteIdx, idx);
-              colNames.add(attInfo.getName() + "_w[" + idx + "]" + unitPreffix);
-              writeAttToColIdx.put(idx, colNames.size()-1);
+      } else {
+
+        if (attInfo.table) {
+          hasTable = true;
+          attInfo.tableIdx = colNames.size();
+          colNames.add(attInfo.getName() + unitSuffix);
+          if (isRW) {
+            attInfo.wtableIdx = colNames.size();
+            colNames.add(attInfo.getName() + "_w" + unitSuffix);
+          }
+        }
+
+        // Expanded attribute in table
+        if (attInfo.isExpanded()) {
+
+          for (ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+
+            if (aai.table) {
+
+              hasTable = true;
+
+              int idx = aai.idx;
+              String unitPreffix = "";
+              if (attInfo.unit.length() > 0) {
+                unitPreffix = " (" + attInfo.unit + ")";
+              }
+              aai.tableIdx = colNames.size();
+              colNames.add(attInfo.getName() + "[" + idx + "]" + unitPreffix);
+              if (isRW) {
+                aai.wtableIdx = colNames.size();
+                colNames.add(attInfo.getName() + "_w[" + idx + "]" + unitPreffix);
+              }
             }
           }
         }
+
       }
-      
       
       double lastValueForError = 0.0;
-      double lastValue = Double.NaN;
-      double lastWriteValue = Double.NaN;
+      
+      // Last value (used for step representation)
+      MutableDouble lastValue = new MutableDouble(Double.NaN);
+      MutableDouble lastWriteValue = new MutableDouble(Double.NaN);
+      if(attInfo.isAggregate()) {
+        for (HdbData.Aggregate agg : attInfo.getAggregates())
+          attInfo.getAggregate(agg).lastValue = new MutableDouble(Double.NaN);
+      }
+
+      // ----------------------------------------------------------------------
+      // Browse data (fill charts and table)
+      // ----------------------------------------------------------------------
+      
       for (HdbData d : result) {
-        
-        if (attInfo.isNumeric())
-        {
-          if(!attInfo.isArray())
-          {
-            double chartTime = (double)d.getDataTime() / 1000.0;
 
-            try {
-              if(interval == NONE)
-              {
-                lastValueForError = d.getValueAsDouble();
-
-                if(attInfo.step) {
-
-                  if(!Double.isNaN(lastValue))
-                    attInfo.getDataView().add(chartTime,lastValue);
-                  attInfo.getDataView().add(chartTime,d.getValueAsDouble());
-                  lastValue = d.getValueAsDouble();
-
-                  if(isRW) {
-                    if(!Double.isNaN(lastWriteValue))
-                      attInfo.getWriteDataView().add(chartTime,lastWriteValue);
-                    attInfo.getWriteDataView().add(chartTime,d.getWriteValueAsDouble());
-                    lastWriteValue = d.getWriteValueAsDouble();
-                  }
-
-                } else {
-
-                  attInfo.getDataView().add(chartTime,d.getValueAsDouble());
-                  if(isRW)
-                    attInfo.getWriteDataView().add(chartTime,d.getWriteValueAsDouble());
-
-                }
-              }
-              //extract aggregate Data
-              for(HdbData.Aggregate agg : result.getSigInfo().aggregates)
-              {
-                List<Number> aggData = d.getAggregate().get(agg);
-                double aggValue = Double.NaN;
-                if(aggData.size() > 0)
-                {
-                  aggValue = aggData.get(0).doubleValue();
-                }
-                attInfo.getAggregateDataView(interval, agg).add(chartTime, aggValue);
-                //write to table if needed be.
-                if(aggToColIdxes.containsKey(agg))
-                {
-                  tablePanel.table.add(Double.toString(aggValue), d.getQualityFactor(), d.getDataTime(), aggToColIdxes.get(agg));
-                }
-              }
-
-            } catch( HdbFailed e ) {
-
-              attInfo.getDataView().add(chartTime,Double.NaN);
-              if(isRW)
-                attInfo.getWriteDataView().add(chartTime,Double.NaN);
-              attInfo.getErrorDataView().add(chartTime,lastValueForError);
-              attInfo.errors.add(d);
-              lastValue = Double.NaN;
-              lastWriteValue = Double.NaN;
-
-            }
-          }
-          else
-          {
-            if(d.size() > attInfo.maxArraySize) {
-              attInfo.maxArraySize = d.size();
-            }
-          }
-        }
-        
-        if(d.hasFailed())
-        {
-          errorDialog.addError(attInfo.getName(), d);
-          attInfo.incrementErrorSize(interval);
-          nbError++;
-          
-          String err = "/Err"+d.getErrorMessage();
-          tablePanel.table.add(err,1,d.getDataTime(), idxes);
-          tablePanel.table.add(err,1,d.getDataTime(), writeIdxes);
-          tablePanel.table.add(err, 1, d.getDataTime(), attToColIdx.values());
-          tablePanel.table.add(err,1, d.getDataTime(), writeAttToColIdx.values());
-
-        }
-        else
-        {
-          attInfo.incrementDataSize(interval);
-          nbData++;
-          
-          if (d.isInvalid())
-          {
-
-            String err = "/ErrATTR_INVALID";
-            tablePanel.table.add(err,1,d.getDataTime(),idxes);
-            tablePanel.table.add(err,1,d.getDataTime(),writeIdxes);
-            tablePanel.table.add(err, 1, d.getDataTime(), attToColIdx.values());
-            tablePanel.table.add(err,1, d.getDataTime(), writeAttToColIdx.values());
-
-          }
-          else
-          {
-
-            SortedMap<Integer, Integer> attToColIdxIn = attToColIdx.subMap(0, d.size());
-            SortedMap<Integer, Integer> writeAttToColIdxIn = writeAttToColIdx.subMap(0, d.sizeW());
-            SortedMap<Integer, Integer> attToColIdxOut = new TreeMap<>();
-            SortedMap<Integer, Integer> writeAttToColIdxOut = new TreeMap<>();
-            try
-            {
-              attToColIdxOut = attToColIdx.subMap(d.size(), true, maxIdx, true);
-              writeAttToColIdxOut = writeAttToColIdx.subMap(d.sizeW(), true, maxWriteIdx, true);
-            }
-            catch(IllegalArgumentException e)
-            {
-              //this can happen if the attribute is not expanded, use an empty map then;
-            }
-            if(attInfo.isExpanded())
-            {
-              String err = "/Err" + "Index out of bounds";
-              tablePanel.table.add(err, 1, d.getDataTime(), attToColIdxOut.values());
-              tablePanel.table.add(err,1, d.getDataTime(), writeAttToColIdxOut.values());
-            }
-            
-            
-            if(attInfo.isState()) {
-
-              tablePanel.table.add("/State"+d.getValueAsString(),
-                                   d.getQualityFactor(),
-                                   d.getDataTime(),idxes);
-              tablePanel.table.add("/State"+d.getWriteValueAsString(),
-                                   d.getQualityFactor(),
-                                   d.getDataTime(),writeIdxes);
-              
-              if(attInfo.isExpanded())
-              {
-                try
-                {
-                int[] hdbV = ((HdbStateArray) d).getValue();
-                int[] hdbVWrite = ((HdbStateArray) d).getWriteValue();
-                for(Map.Entry<Integer, Integer> idxToCol : attToColIdxIn.entrySet())
-                {
-                  tablePanel.table.add("/State" + HdbState.getStateString(hdbV[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
-                }
-
-                for(Map.Entry<Integer, Integer> idxToCol : writeAttToColIdxIn.entrySet())
-                {
-                  tablePanel.table.add("/State" + HdbState.getStateString(hdbVWrite[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
-                }
-              } catch(HdbFailed e)
-              {
+        double chartTime = (double) d.getDataTime() / 1000.0;
                 
+        if( attInfo.isAggregate() ) {
+          
+          // Aggregate
+          try {
+            for (HdbData.Aggregate agg : attInfo.getAggregates()) {
+              List<Number> aggData = d.getAggregate().get(agg);
+              AggregateAttributeInfo aggInfo = attInfo.getAggregate(agg);
+              double aggValue = Double.NaN;
+              if (aggData.size() > 0)
+                aggValue = aggData.get(0).doubleValue();
+              addToDv(attInfo.getAggregateDataView(agg), chartTime, aggValue, aggInfo.lastValue, aggInfo.step);
+              if(aggInfo.table)
+                tablePanel.table.add(Double.toString(aggValue), d.getQualityFactor(), d.getDataTime(), aggInfo.tableIdx);
+            }
+            attInfo.dataSize++;
+          } catch (HdbFailed e) {
+            // getAggregate() should not throw DevFailed
+            System.out.println("MainPanel.performSearch(): getAggregate() Unexpected HdbFailed " + e.getMessage());
+          }
+
+        } else if (attInfo.isNumeric() && !attInfo.isArray()) {
+
+          // Numeric scalar data          
+          try {
+
+            addToDv(attInfo.getDataView(), chartTime, d.getValueAsDouble(), lastValue, attInfo.step);
+            if (attInfo.table)
+              tablePanel.table.add(Double.toString(d.getValueAsDouble()), d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
+            if (isRW) {
+              addToDv(attInfo.getDataView(), chartTime, d.getWriteValueAsDouble(), lastWriteValue, attInfo.step);
+              if (attInfo.table)
+                tablePanel.table.add(Double.toString(d.getWriteValueAsDouble()), d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
+            }
+            attInfo.dataSize++;
+
+          } catch (HdbFailed e) {
+
+            attInfo.getDataView().add(chartTime, Double.NaN);
+            if (isRW)
+              attInfo.getWriteDataView().add(chartTime, Double.NaN);
+            attInfo.getErrorDataView().add(chartTime, lastValueForError);
+            attInfo.errors.add(d);
+            lastValue.value = Double.NaN;
+            lastWriteValue.value = Double.NaN;
+            attInfo.errorSize++;
+            nbError++;
+            errorDialog.addError(attInfo.getName(), d);
+
+            if (attInfo.table) {
+              tablePanel.table.add(e.getMessage(), d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
+              if (isRW)
+                tablePanel.table.add(e.getMessage(), d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
+            }
+
+          }
+
+        } else {
+
+          // Update maxArray size (for image display)
+          if (d.size() > attInfo.maxArraySize)
+            attInfo.maxArraySize = d.size();
+
+          // Non numeric attribute or array
+          // Non numeric can can go only into table
+          if (d.hasFailed()) {
+
+            errorDialog.addError(attInfo.getName(), d);
+            attInfo.errorSize++;
+            nbError++;
+            if (attInfo.table) {
+              tablePanel.table.add(d.getErrorMessage(), d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
+              if (isRW) {
+                tablePanel.table.add(d.getErrorMessage(), d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
               }
+            }
+
+            if (attInfo.isExpanded()) {
+              for (ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+                if (aai.table) {
+                  tablePanel.table.add(d.getErrorMessage(), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                  if (isRW) {
+                    tablePanel.table.add(d.getErrorMessage(), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);
+                  }
+                }
               }
+            }
+
+          } else {
+
+            if (attInfo.isState()) {
+
+              // State attribute
+              if(attInfo.table) {
+                tablePanel.table.add("/State" + d.getValueAsString(),
+                      d.getQualityFactor(),
+                      d.getDataTime(), attInfo.tableIdx);
+                if (isRW)
+                  tablePanel.table.add("/State" + d.getWriteValueAsString(),
+                        d.getQualityFactor(),
+                        d.getDataTime(), attInfo.wtableIdx);
+              }
+              
+              // Expanded state array
+              if(attInfo.isExpanded()) {
+                try {
+                  int[] hdbV = ((HdbStateArray) d).getValue();
+                  int[] hdbVWrite = ((HdbStateArray) d).getWriteValue();
+                  for (ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+                    if(aai.table) {
+                      tablePanel.table.add("/State" + HdbState.getStateString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                      if (isRW)
+                        tablePanel.table.add("/State" + HdbState.getStateString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);
+                    }
+                  }
+                } catch(HdbFailed e) {}              
+              }
+              
             } else {
 
-              tablePanel.table.add(d.getValueAsString(),
-                                   d.getQualityFactor(),
-                                   d.getDataTime(),idxes);
+              // Non state attributes
+              if( attInfo.table ) {
+                tablePanel.table.add(d.getValueAsString(),
+                        d.getQualityFactor(),
+                        d.getDataTime(), attInfo.tableIdx);
 
-              tablePanel.table.add(d.getWriteValueAsString(),
-                                   d.getQualityFactor(),
-                                   d.getDataTime(),writeIdxes);
-              
-              if(attInfo.isExpanded())
-              {
-                try
-                {
+                if (isRW)
+                  tablePanel.table.add(d.getWriteValueAsString(),
+                          d.getQualityFactor(),
+                          d.getDataTime(), attInfo.wtableIdx);
+              }
+            
+              if(attInfo.isExpanded()) {
+                try {
                   // Do not use convenience function for performance
                   // Not all type implemented
                   // Default to convenience function
                   if (d instanceof HdbFloatArray) {
                     float[] hdbV = ((HdbFloatArray) d).getValue();
                     float[] hdbVWrite = ((HdbFloatArray) d).getWriteValue();
-                    for(Map.Entry<Integer, Integer> idxToCol : attToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Float.toString(hdbV[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
-                    }
-
-                    for(Map.Entry<Integer, Integer> idxToCol : writeAttToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Float.toString(hdbVWrite[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
+                    for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+                      if(aai.table) {
+                        tablePanel.table.add(Float.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        if(isRW)
+                          tablePanel.table.add(Float.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      }
                     }
                   } else if (d instanceof HdbLongArray) {
                     int[] hdbV = ((HdbLongArray) d).getValue();
                     int[] hdbVWrite = ((HdbLongArray) d).getWriteValue();
-                    for(Map.Entry<Integer, Integer> idxToCol : attToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Integer.toString(hdbV[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
-                    }
-
-                    for(Map.Entry<Integer, Integer> idxToCol : writeAttToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Integer.toString(hdbVWrite[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
+                    for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+                      if(aai.table) {
+                        tablePanel.table.add(Integer.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        if(isRW)
+                          tablePanel.table.add(Integer.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      }
                     }
                   } else if (d instanceof HdbLong64Array) {
                     long[] hdbV = ((HdbLong64Array) d).getValue();
                     long[] hdbVWrite = ((HdbLong64Array) d).getWriteValue();
-                    for(Map.Entry<Integer, Integer> idxToCol : attToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Long.toString(hdbV[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
-                    }
-
-                    for(Map.Entry<Integer, Integer> idxToCol : writeAttToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Long.toString(hdbVWrite[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
+                    for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+                      if(aai.table) {
+                        tablePanel.table.add(Long.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        if(isRW)
+                          tablePanel.table.add(Long.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      }
                     }
                   } else if (d instanceof HdbShortArray) {
                     short[] hdbV = ((HdbShortArray) d).getValue();
                     short[] hdbVWrite = ((HdbShortArray) d).getWriteValue();
-                    for(Map.Entry<Integer, Integer> idxToCol : attToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Short.toString(hdbV[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
+                    for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+                      if(aai.table) {
+                        tablePanel.table.add(Short.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        if(isRW)
+                          tablePanel.table.add(Short.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      }
                     }
-
-                    for(Map.Entry<Integer, Integer> idxToCol : writeAttToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Short.toString(hdbVWrite[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
-                    }
+                  } else if (d instanceof HdbStringArray) {
+                    String[] hdbV = ((HdbStringArray) d).getValue();
+                    String[] hdbVWrite = ((HdbStringArray) d).getValue();
+                    for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+                      if(aai.table) {
+                        tablePanel.table.add(hdbV[aai.idx], d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        if(isRW)
+                          tablePanel.table.add(hdbVWrite[aai.idx], d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      }
+                    }                          
                   } else {
                     double[] hdbV = d.getValueAsDoubleArray();
-                    double[] hdbVWrite = d.getWriteValueAsDoubleArray();
-                    for(Map.Entry<Integer, Integer> idxToCol : attToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Double.toString(hdbV[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
-                    }
-
-                    for(Map.Entry<Integer, Integer> idxToCol : writeAttToColIdxIn.entrySet())
-                    {
-                      tablePanel.table.add(Double.toString(hdbVWrite[idxToCol.getKey()]), d.getQualityFactor(), d.getDataTime(), idxToCol.getValue());
-                    }
+                    double[] hdbVWrite = d.getValueAsDoubleArray();
+                    for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
+                      if(aai.table) {
+                        tablePanel.table.add(Double.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        if(isRW)
+                          tablePanel.table.add(Double.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      }
+                    }                    
                   }
-                } catch (HdbFailed e)
-                {
-                }
+                } catch (HdbFailed e) {}
+                
               }
+              
             }
+
           }
+
         }
+          
       }
+     
+      resultIdx++;
     }
 
     infoDialog.addText("Total data="+nbData);
@@ -1354,19 +1318,31 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
     // Select chart and image attribute
     for(AttributeInfo ai : selection) {
 
-      // Select normal attribute
-      selectAttribute(ai,-1,ai.selection,false);
-      if(ai.isRW())
-        selectAttribute(ai,-1,ai.wselection,true);
+      if (ai.isAggregate()) {
+        
+        // Select aggregates
+        for(HdbData.Aggregate agg:ai.getAggregates())
+          selectAttribute(ai, -1, agg,ai.getAggregate(agg).selection, false);        
 
-      // Select expanded attribute
-      if(ai.isExpanded()) {
-        for(int i=0;i<ai.arrAttInfos.size();i++) {
-          ArrayAttributeInfo aai = ai.arrAttInfos.get(i);
-          selectAttribute(ai,i,aai.selection,false);
-          if(ai.isRW())
-            selectAttribute(ai,i,aai.wselection,true);
+      } else {
+        
+        // Select normal attribute
+        selectAttribute(ai, -1, ai.selection, false);
+        if (ai.isRW()) {
+          selectAttribute(ai, -1, ai.wselection, true);
         }
+
+        // Select expanded attribute
+        if (ai.isExpanded()) {
+          for (int i = 0; i < ai.arrAttInfos.size(); i++) {
+            ArrayAttributeInfo aai = ai.arrAttInfos.get(i);
+            selectAttribute(ai, i, aai.selection, false);
+            if (ai.isRW()) {
+              selectAttribute(ai, i, aai.wselection, true);
+            }
+          }
+        }
+        
       }
 
     }
@@ -1395,21 +1371,6 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
           chartPanel.addXItem(ai);
         }
 
-      }
-
-      // Select normal attribute
-      selectAttribute(ai,-1,ai.selection,false);
-      if(ai.isRW())
-        selectAttribute(ai,-1,ai.wselection,true);
-
-      // Select expanded attribute
-      if(ai.isExpanded()) {
-        for(int i=0;i<ai.arrAttInfos.size();i++) {
-          ArrayAttributeInfo aai = ai.arrAttInfos.get(i);
-          selectAttribute(ai,i,aai.selection,false);
-          if(ai.isRW())
-            selectAttribute(ai,i,aai.wselection,true);
-        }
       }
 
     }
