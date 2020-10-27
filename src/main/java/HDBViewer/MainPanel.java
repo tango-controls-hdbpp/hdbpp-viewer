@@ -1298,12 +1298,13 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
                       }
                     }                    
                   }
+                  
                 } catch (HdbFailed e) {}
                 
               }
               
             }
-
+            attInfo.dataSize++;
           }
 
         }
