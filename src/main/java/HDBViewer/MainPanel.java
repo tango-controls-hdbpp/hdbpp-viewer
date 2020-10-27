@@ -1130,7 +1130,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
             if (attInfo.table)
               tablePanel.table.add(Double.toString(d.getValueAsDouble()), d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
             if (isRW) {
-              addToDv(attInfo.getDataView(), chartTime, d.getWriteValueAsDouble(), lastWriteValue, attInfo.step);
+              addToDv(attInfo.getWriteDataView(), chartTime, d.getWriteValueAsDouble(), lastWriteValue, attInfo.step);
               if (attInfo.table)
                 tablePanel.table.add(Double.toString(d.getWriteValueAsDouble()), d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
             }
