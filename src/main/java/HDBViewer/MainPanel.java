@@ -1128,11 +1128,57 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
 
             addToDv(attInfo.getDataView(), chartTime, d.getValueAsDouble(), lastValue, attInfo.step);
             if (attInfo.table)
-              tablePanel.table.add(Double.toString(d.getValueAsDouble()), d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
+            {
+              String err = "";
+              if(d.hasFailed())
+              {
+                err = "/Err"+d.getErrorMessage();
+              }
+              else if (d.isInvalid()) {
+                err = "/ErrATTR_INVALID";
+              }
+              if(!err.isEmpty())
+              {
+                tablePanel.table.add(err, 1, d.getDataTime(), attInfo.tableIdx);
+              }
+              else if (attInfo.isState())
+              {
+                tablePanel.table.add("/State" + d.getValueAsString(),
+                      d.getQualityFactor(),
+                      d.getDataTime(), attInfo.tableIdx);
+              }
+              else
+              {
+                tablePanel.table.add(Double.toString(d.getValueAsDouble()), d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
+              }
+            }
             if (isRW) {
               addToDv(attInfo.getWriteDataView(), chartTime, d.getWriteValueAsDouble(), lastWriteValue, attInfo.step);
               if (attInfo.table)
-                tablePanel.table.add(Double.toString(d.getWriteValueAsDouble()), d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
+              {
+              String err = "";
+              if(d.hasFailed())
+              {
+                err = "/Err"+d.getErrorMessage();
+            
+              }
+              else if (d.isInvalid()) {
+                err = "/ErrATTR_INVALID";
+              }
+              if(!err.isEmpty())
+              {
+                tablePanel.table.add(err, 1, d.getDataTime(), attInfo.wtableIdx);
+              }
+              else if (attInfo.isState()) {
+                  tablePanel.table.add("/State" + d.getWriteValueAsString(),
+                        d.getQualityFactor(),
+                        d.getDataTime(), attInfo.wtableIdx);
+                }
+                else
+                {
+                  tablePanel.table.add(Double.toString(d.getWriteValueAsDouble()), d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
+                }
+              }
             }
             attInfo.dataSize++;
 
@@ -1164,25 +1210,26 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
             attInfo.maxArraySize = d.size();
 
           // Non numeric attribute or array
-          // Non numeric can can go only into table
+          // Non numeric can go only into table
           if (d.hasFailed()) {
 
             errorDialog.addError(attInfo.getName(), d);
             attInfo.errorSize++;
             nbError++;
+            String err = "/Err"+d.getErrorMessage();
             if (attInfo.table) {
-              tablePanel.table.add(d.getErrorMessage(), d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
+              tablePanel.table.add(err, d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
               if (isRW) {
-                tablePanel.table.add(d.getErrorMessage(), d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
+                tablePanel.table.add(err, d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
               }
             }
 
             if (attInfo.isExpanded()) {
               for (ArrayAttributeInfo aai : attInfo.arrAttInfos) {
                 if (aai.table) {
-                  tablePanel.table.add(d.getErrorMessage(), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                  tablePanel.table.add(err, d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
                   if (isRW) {
-                    tablePanel.table.add(d.getErrorMessage(), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);
+                    tablePanel.table.add(err, d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);
                   }
                 }
               }
