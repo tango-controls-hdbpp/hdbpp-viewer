@@ -31,11 +31,7 @@ public class MultiLineTable extends JTable {
   }
 
   public void add(String value,int quality,long time,int colIdx) {
-    if( quality==ATTR_INVALID.value() ) {
-      tableModel.add("/ErrATTR_INVALID", quality, time, colIdx);      
-    } else {
       tableModel.add(value, quality, time, colIdx);
-    }
   }
   
   public void add(String value,int quality,long time,Collection<Integer> colIdxes) {
