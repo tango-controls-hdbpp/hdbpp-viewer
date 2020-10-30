@@ -1113,7 +1113,9 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
                 aggValue = aggData.get(0).doubleValue();
               addToDv(attInfo.getAggregateDataView(agg), chartTime, aggValue, aggInfo.lastValue, aggInfo.step);
               if(aggInfo.table)
+              {
                 tablePanel.table.add(Double.toString(aggValue), d.getQualityFactor(), d.getDataTime(), aggInfo.tableIdx);
+              }
             }
             attInfo.dataSize++;
           } catch (HdbFailed e) {
@@ -1196,9 +1198,10 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
             errorDialog.addError(attInfo.getName(), d);
 
             if (attInfo.table) {
-              tablePanel.table.add(e.getMessage(), d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
+              String err = "/Err"+e.getMessage();
+              tablePanel.table.add(err, d.getQualityFactor(), d.getDataTime(), attInfo.tableIdx);
               if (isRW)
-                tablePanel.table.add(e.getMessage(), d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
+                tablePanel.table.add(err, d.getQualityFactor(), d.getDataTime(), attInfo.wtableIdx);
             }
 
           }

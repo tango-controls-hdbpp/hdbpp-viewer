@@ -67,7 +67,7 @@ public class MultiLineCellRenderer extends JTextArea implements TableCellRendere
     if (Utils.contains(selRows, row)) {
       setBackground(selColor);
     } else {
-      if(column>0) {        
+      if(column>0) {
         if(str.startsWith("/Err")) {
           setBackground(errorColor);   
         } else if(str.startsWith("/State")) {
