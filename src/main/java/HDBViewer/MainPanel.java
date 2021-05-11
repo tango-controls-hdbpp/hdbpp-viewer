@@ -1109,7 +1109,8 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
               List<Number> aggData = d.getAggregate().get(agg);
               AggregateAttributeInfo aggInfo = attInfo.getAggregate(agg);
               double aggValue = Double.NaN;
-              if (aggData.size() > 0)
+              int aggSize = aggData==null?0:aggData.size();
+              if (aggSize > 0)
                 aggValue = aggData.get(0).doubleValue();
               
               if(!attInfo.isArray())
@@ -1125,9 +1126,9 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
                     StringBuilder array = new StringBuilder();
                     array.append(agg.toString());
                     array.append("[");
-                    array.append(aggData.size());
+                    array.append(aggSize);
                     array.append("]\n");
-                    for(int i = 0; i < aggData.size(); i++)
+                    for(int i = 0; i < aggSize; i++)
                     {
                         array.append(aggData.get(i));
                         if(i != aggData.size()-1)
