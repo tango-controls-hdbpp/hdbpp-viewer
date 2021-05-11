@@ -1111,10 +1111,31 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
               double aggValue = Double.NaN;
               if (aggData.size() > 0)
                 aggValue = aggData.get(0).doubleValue();
-              addToDv(attInfo.getAggregateDataView(agg), chartTime, aggValue, aggInfo.lastValue, aggInfo.step);
+              
+              if(!attInfo.isArray())
+              {
+                addToDv(attInfo.getAggregateDataView(agg), chartTime, aggValue, aggInfo.lastValue, aggInfo.step);
+              }
+              
               if(aggInfo.table)
               {
-                tablePanel.table.add(Double.toString(aggValue), d.getQualityFactor(), d.getDataTime(), aggInfo.tableIdx);
+                String tableValue = Double.toString(aggValue);
+                if(attInfo.isArray())
+                {
+                    StringBuilder array = new StringBuilder();
+                    array.append(agg.toString());
+                    array.append("[");
+                    array.append(aggData.size());
+                    array.append("]\n");
+                    for(int i = 0; i < aggData.size(); i++)
+                    {
+                        array.append(aggData.get(i));
+                        if(i != aggData.size()-1)
+                            array.append("\n");
+                    }
+                    tableValue = array.toString();
+                }
+                tablePanel.table.add(tableValue, d.getQualityFactor(), d.getDataTime(), aggInfo.tableIdx);
               }
             }
             attInfo.dataSize++;

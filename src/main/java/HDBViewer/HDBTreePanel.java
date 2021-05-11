@@ -157,7 +157,7 @@ public class HDBTreePanel extends javax.swing.JPanel implements ActionListener,T
         
         if(!AttributeInfo.isInList(ai, parent.selection)) {
 
-          if( ai.isArray() && ai.isAggregate() ) {
+          if( ai.isArray() && ai.isAggregate() && (ai.interval == SignalInfo.Interval.ONE_MIN || ai.interval == SignalInfo.Interval.TEN_MIN)) {
             Utils.showError("Aggregate not suppported for array attributes\n");
           } else {
 
