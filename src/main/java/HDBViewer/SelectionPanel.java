@@ -558,7 +558,11 @@ public class SelectionPanel extends javax.swing.JPanel {
           objs[j][TYPE_IDX] = ai.getType();
           objs[j][INTERVAL_IDX] = ai.interval;
           objs[j][AGGREGATE_IDX] = agg;
-          objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+          if(agg.compareTo(HdbData.Aggregate.COUNT_W)>=0 && !ai.isRW()) {
+            objs[j][RECORDS_IDX] = "0";
+          } else {
+            objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";          
+          }
           objs[j][TABLE_IDX] = ai.getAggregate(agg).table;
           objs[j][STEP_IDX] = ai.getAggregate(agg).step;
           objs[j][Y1_IDX] = (ai.getAggregate(agg).selection == AttributeInfo.SEL_Y1);
