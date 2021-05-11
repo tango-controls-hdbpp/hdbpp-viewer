@@ -134,6 +134,11 @@ public class AttributeInfo {
     }
 
   }
+  
+  public void unexpand(int id) {
+    if(id>=0 && id<arrAttInfos.size())
+      arrAttInfos.remove(id);
+  }
 
   static boolean isInList(AttributeInfo item,ArrayList<AttributeInfo> list) {
 
@@ -197,7 +202,7 @@ public class AttributeInfo {
     return a;
     
   }
-  
+    
   public void addAggregate(HdbData.Aggregate agg) {
     AggregateAttributeInfo a = new AggregateAttributeInfo();
     a.selection = SEL_Y1;
@@ -206,6 +211,10 @@ public class AttributeInfo {
 
   public void addAggregate(HdbData.Aggregate agg,AggregateAttributeInfo a) {
     aggInfos.put(agg,a);
+  }
+  
+  public void removeAggregate(HdbData.Aggregate agg) {
+    aggInfos.remove(agg);
   }
   
   public JLDataView getDataView()

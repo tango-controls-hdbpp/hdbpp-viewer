@@ -203,43 +203,61 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
   }
 
   /**
-   * Unselect given attribute from data views
+   * Unselect given attribute data views from chart
    * @param ai Attribute to unselect
    * @param item Index of expanded attribute or -1 for normal attribute
+   * @param agg Aggregate to unselect
    */
-  public void unselectAttribute(AttributeInfo ai,int item) {
+  public void unselectAttribute(AttributeInfo ai,int item,HdbData.Aggregate agg) {
 
     JLAxis axis;
-
-    if(item<0) {
-
-      if(ai.getDataView()!=null)
-        ai.getDataView().removeFromAxis();
-
-      if(ai.getWriteDataView()!=null)
-        ai.getWriteDataView().removeFromAxis();
-
-      if(ai.getErrorDataView()!=null)
-        ai.getErrorDataView().removeFromAxis();
-
-      ai.selection = AttributeInfo.SEL_NONE;
-      ai.wselection = AttributeInfo.SEL_NONE;
-
+    
+    if (ai.isAggregate()) {
+      
+      // Aggregate
+      if(ai.getAggregate(agg).dv!=null)
+        ai.getAggregate(agg).dv.removeFromAxis();
+      ai.getAggregate(agg).selection = AttributeInfo.SEL_NONE;
+      
     } else {
+      
+      // Raw attribute
 
-      ArrayAttributeInfo aai = ai.arrAttInfos.get(item);
+      if (item < 0) {
 
-      if(aai.chartData!=null)
-        aai.chartData.removeFromAxis();
+        if (ai.getDataView() != null) {
+          ai.getDataView().removeFromAxis();
+        }
 
-      if(aai.wchartData!=null)
-        aai.wchartData.removeFromAxis();
+        if (ai.getWriteDataView() != null) {
+          ai.getWriteDataView().removeFromAxis();
+        }
 
-      //if(aai.errorData!=null)
-      //  aai.errorData.removeFromAxis();
+        if (ai.getErrorDataView() != null) {
+          ai.getErrorDataView().removeFromAxis();
+        }
 
-      aai.selection = AttributeInfo.SEL_NONE;
-      aai.wselection = AttributeInfo.SEL_NONE;
+        ai.selection = AttributeInfo.SEL_NONE;
+        ai.wselection = AttributeInfo.SEL_NONE;
+
+      } else {
+
+        ArrayAttributeInfo aai = ai.arrAttInfos.get(item);
+
+        if (aai.chartData != null) {
+          aai.chartData.removeFromAxis();
+        }
+
+        if (aai.wchartData != null) {
+          aai.wchartData.removeFromAxis();
+        }
+
+        //if(aai.errorData!=null)
+        //  aai.errorData.removeFromAxis();
+        aai.selection = AttributeInfo.SEL_NONE;
+        aai.wselection = AttributeInfo.SEL_NONE;
+
+      }
 
     }
 

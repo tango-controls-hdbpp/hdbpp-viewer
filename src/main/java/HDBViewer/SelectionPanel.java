@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -255,7 +256,7 @@ public class SelectionPanel extends javax.swing.JPanel {
           // Unselect old expanded (if any)
           if(ai.isExpanded()) {
             for(int i=0;i<ai.arrAttInfos.size();i++)
-              parent.unselectAttribute(ai, i);
+              parent.unselectAttribute(ai, i, null);
           }
           ai.expand(expandedIDs);
         }
@@ -666,42 +667,50 @@ public class SelectionPanel extends javax.swing.JPanel {
 
   }
 
-  private void removeID(String id) {
+  private void removeFromSel(SelRowItem item,ArrayList<Integer> attToRemove) {
+        
+    AttributeInfo ai = parent.selection.get(item.attIdx);
+    if(ai.isAggregate()) {
+      
+      parent.unselectAttribute(ai, -1, item.aggregate);
+      ai.removeAggregate(item.aggregate);
+      if(ai.getNbAggregate()==0)
+        if(!attToRemove.contains(item.attIdx))
+          attToRemove.add(item.attIdx);
+        
+    } else {
 
-    boolean found = false;
-    int i=0;
-    while(!found && i<parent.selection.size()) {
-      found = parent.selection.get(i).sigInfo.sigId == id;
-      if(!found) i++;
-    }
-
-    if(found) {
-      AttributeInfo ai = parent.selection.get(i);
-      parent.unselectAttribute(ai,-1);
-      if(ai.isExpanded()) {
-        for(int j=0;j<ai.arrAttInfos.size();j++)
-          parent.unselectAttribute(ai,j);
+      if( item.arrayItem==-1 ) {
+        // Remove attribute and expandeds
+        parent.unselectAttribute(ai, -1, null);
+        if(ai.isExpanded()) {
+          for(int j=0;j<ai.arrAttInfos.size();j++)
+            parent.unselectAttribute(ai,j,null);
+        }
+        if(!attToRemove.contains(item.attIdx))
+          attToRemove.add(item.attIdx);
+      } else {
+        // remove one of expanded items
+        parent.unselectAttribute(ai, item.arrayItem, null);
+        ai.unexpand(item.arrayItem);                
       }
-      parent.selection.remove(i);
+      
     }
-
+    
   }
 
   private void removeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeButtonActionPerformed
 
     int[] rows = selTable.getSelectedRows();
-    ArrayList<String> ids = new ArrayList<>();
-
-    // List of ids to remove
-    for(int i=0;i<rows.length;i++) {
-      int attIdx = rowToIdx[rows[i]].attIdx;
-      String id = parent.selection.get(attIdx).sigInfo.sigId;
-      if(!ids.contains(id)) ids.add(id);
-    }
-
-    for(int i=0;i<ids.size();i++)
-      removeID(ids.get(i));
-
+    ArrayList<Integer> toClear = new ArrayList<Integer>();
+    for(int i=0;i<rows.length;i++)
+      removeFromSel(rowToIdx[rows[i]],toClear);    
+    
+    // Empty unused attribute
+    Collections.sort(toClear);    
+    for(int i=toClear.size()-1;i>=0;i--)
+      parent.selection.remove(toClear.get(i).intValue());
+    
     updateSelectionList();
 
   }//GEN-LAST:event_removeButtonActionPerformed
