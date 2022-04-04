@@ -657,11 +657,11 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
       try {
 
         // Read
-        double r = (aai.idx>d.size())?Double.NaN:d.getValueAsDoubleArray()[aai.idx];
+        double r = (item>d.size())?Double.NaN:d.getValueAsDoubleArray()[item];
         addToDv(aai.chartData,chartTime,r,lastValue,aai.step);
           
         if( isRW ) {            
-          double s = (aai.idx>d.sizeW())?Double.NaN:d.getWriteValueAsDoubleArray()[aai.idx];
+          double s = (item>d.sizeW())?Double.NaN:d.getWriteValueAsDoubleArray()[item];
           addToDv(aai.wchartData,chartTime,s,lastWriteValue,aai.step);            
         }
 
@@ -871,6 +871,7 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
           input.endDate = stopDate;
           input.info.interval = att.interval; //this will only be used for aggregate.
           input.info.aggregates = att.getAggregates();
+          input.info.indexes = att.getArrayIndexes();
           sigIn.add(input);
         }
 
@@ -1298,11 +1299,13 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
                 try {
                   int[] hdbV = ((HdbStateArray) d).getValue();
                   int[] hdbVWrite = ((HdbStateArray) d).getWriteValue();
+                  int idx = 0;
                   for (ArrayAttributeInfo aai : attInfo.arrAttInfos) {
                     if(aai.table) {
-                      tablePanel.table.add("/State" + HdbState.getStateString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                      tablePanel.table.add("/State" + HdbState.getStateString(hdbV[idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
                       if (isRW)
-                        tablePanel.table.add("/State" + HdbState.getStateString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);
+                        tablePanel.table.add("/State" + HdbState.getStateString(hdbVWrite[idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);
+                      idx++;
                     }
                   }
                 } catch(HdbFailed e) {}              
@@ -1330,61 +1333,73 @@ public class MainPanel extends javax.swing.JFrame implements IJLChartListener,Hd
                   if (d instanceof HdbFloatArray) {
                     float[] hdbV = ((HdbFloatArray) d).getValue();
                     float[] hdbVWrite = ((HdbFloatArray) d).getWriteValue();
+                  int idx = 0;
                     for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
                       if(aai.table) {
-                        tablePanel.table.add(Float.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        tablePanel.table.add(Float.toString(hdbV[idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
                         if(isRW)
-                          tablePanel.table.add(Float.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                          tablePanel.table.add(Float.toString(hdbVWrite[idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      idx++;
                       }
                     }
                   } else if (d instanceof HdbLongArray) {
                     int[] hdbV = ((HdbLongArray) d).getValue();
                     int[] hdbVWrite = ((HdbLongArray) d).getWriteValue();
+                  int idx = 0;
                     for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
                       if(aai.table) {
-                        tablePanel.table.add(Integer.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        tablePanel.table.add(Integer.toString(hdbV[idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
                         if(isRW)
-                          tablePanel.table.add(Integer.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                          tablePanel.table.add(Integer.toString(hdbVWrite[idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      idx++;
                       }
                     }
                   } else if (d instanceof HdbLong64Array) {
                     long[] hdbV = ((HdbLong64Array) d).getValue();
                     long[] hdbVWrite = ((HdbLong64Array) d).getWriteValue();
+                  int idx = 0;
                     for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
                       if(aai.table) {
-                        tablePanel.table.add(Long.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        tablePanel.table.add(Long.toString(hdbV[idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
                         if(isRW)
-                          tablePanel.table.add(Long.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                          tablePanel.table.add(Long.toString(hdbVWrite[idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      idx++;
                       }
                     }
                   } else if (d instanceof HdbShortArray) {
                     short[] hdbV = ((HdbShortArray) d).getValue();
                     short[] hdbVWrite = ((HdbShortArray) d).getWriteValue();
+                  int idx = 0;
                     for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
                       if(aai.table) {
-                        tablePanel.table.add(Short.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        tablePanel.table.add(Short.toString(hdbV[idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
                         if(isRW)
-                          tablePanel.table.add(Short.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                          tablePanel.table.add(Short.toString(hdbVWrite[idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      idx++;
                       }
                     }
                   } else if (d instanceof HdbStringArray) {
                     String[] hdbV = ((HdbStringArray) d).getValue();
                     String[] hdbVWrite = ((HdbStringArray) d).getValue();
+                  int idx = 0;
                     for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
                       if(aai.table) {
-                        tablePanel.table.add(hdbV[aai.idx], d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        tablePanel.table.add(hdbV[idx], d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
                         if(isRW)
-                          tablePanel.table.add(hdbVWrite[aai.idx], d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                          tablePanel.table.add(hdbVWrite[idx], d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      idx++;
                       }
                     }                          
                   } else {
                     double[] hdbV = d.getValueAsDoubleArray();
                     double[] hdbVWrite = d.getValueAsDoubleArray();
+                  int idx = 0;
                     for(ArrayAttributeInfo aai : attInfo.arrAttInfos) {
                       if(aai.table) {
-                        tablePanel.table.add(Double.toString(hdbV[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
+                        tablePanel.table.add(Double.toString(hdbV[idx]), d.getQualityFactor(), d.getDataTime(), aai.tableIdx);
                         if(isRW)
-                          tablePanel.table.add(Double.toString(hdbVWrite[aai.idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                          tablePanel.table.add(Double.toString(hdbVWrite[idx]), d.getQualityFactor(), d.getDataTime(), aai.wtableIdx);                          
+                      idx++;
                       }
                     }                    
                   }

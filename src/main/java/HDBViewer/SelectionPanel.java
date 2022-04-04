@@ -572,6 +572,24 @@ public class SelectionPanel extends javax.swing.JPanel {
           rowToIdx[j] = new SelRowItem(i, false, -1, agg);
           j++;
 
+          if (ai.isExpanded()) {
+              int k = 0;
+              for (ArrayAttributeInfo aai : ai.arrAttInfos) {
+                objs[j][HOST_IDX] = ai.host;
+                objs[j][ATTRIBUTE_IDX] = ai.getName() + "[" + aai.idx + "]";
+                objs[j][TYPE_IDX] = "Item #" + aai.idx;
+                objs[j][INTERVAL_IDX] = ai.interval;
+                objs[j][RECORDS_IDX] = Integer.toString(ai.dataSize) + " (Err=" + Integer.toString(ai.errorSize) + ")";
+                objs[j][TABLE_IDX] = aai.table;
+                objs[j][STEP_IDX] = aai.step;
+                objs[j][Y1_IDX] = (aai.selection == AttributeInfo.SEL_Y1);
+                objs[j][Y2_IDX] = (aai.selection == AttributeInfo.SEL_Y2);
+                objs[j][IMG_IDX] = (aai.selection == AttributeInfo.SEL_IMAGE);
+                rowToIdx[j] = new SelRowItem(i, false, k);
+                j++;
+                k++;
+              }
+          }
         }
 
       } else {
