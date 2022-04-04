@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import org.tango.jhdb.HdbSigInfo;
 import org.tango.jhdb.HdbSigParam;
 import org.tango.jhdb.SignalInfo;
@@ -217,6 +219,18 @@ public class AttributeInfo {
     aggInfos.remove(agg);
   }
   
+  public SortedSet<Integer> getArrayIndexes()
+  {
+      TreeSet<Integer> ret = new TreeSet<>();
+    if( !isArray() || arrAttInfos==null )
+      return ret;
+      for(ArrayAttributeInfo ai : arrAttInfos)
+      {
+          ret.add(ai.idx);
+      }
+    return ret;
+  }
+
   public JLDataView getDataView()
   {
     return chartData[DATA_IDX];
